@@ -6,6 +6,19 @@
 let ctx = null;
 let unlocked = false;
 
+// 音效总音量（0-1），由声音面板控制，持久化到 localStorage
+let sfxVol = (() => {
+  const v = parseFloat(localStorage.getItem('catan_sfx_vol'));
+  return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 1;
+})();
+export function setSfxVolume(v) {
+  sfxVol = Math.max(0, Math.min(1, v));
+  localStorage.setItem('catan_sfx_vol', String(sfxVol));
+}
+export function getSfxVolume() {
+  return sfxVol;
+}
+
 function ac() {
   if (!ctx) {
     const AC = window.AudioContext || window.webkitAudioContext;
@@ -59,9 +72,11 @@ function checkBlocked() {
 
 // 单个短音：freq 起始频率，freq2 结束频率（滑音），dur 秒，gain 音量，when 延迟秒
 function tone(opts) {
+  if (sfxVol <= 0) return;
   const c = ac();
   if (!c) return;
   const full = { freq: 600, freq2: 0, type: 'sine', dur: 0.08, gain: 0.1, when: 0, ...opts };
+  full.gain *= sfxVol;
   unlock(c);
   if (c.state === 'running') {
     schedule(c, full);

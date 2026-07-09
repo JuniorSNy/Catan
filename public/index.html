@@ -63,6 +63,20 @@
         <button id="zoom-out" title="缩小">－</button>
         <button id="zoom-reset" title="复位视野（双击棋盘同效）">⤢</button>
       </div>
+      <div id="sound-controls">
+        <div id="sound-panel" class="hidden">
+          <div class="sound-row">
+            <button id="bgm-toggle" class="sound-mini" title="音乐开/关">🎵</button>
+            <input id="bgm-range" type="range" min="0" max="100">
+          </div>
+          <div class="sound-row">
+            <button id="sfx-toggle" class="sound-mini" title="点击试听音效">🔔</button>
+            <input id="sfx-range" type="range" min="0" max="100">
+          </div>
+          <p id="bgm-hint" class="hidden">未找到音乐文件：请将 mp3 放到 public/audio/bgm.mp3</p>
+        </div>
+        <button id="sound-toggle" title="声音设置">🔊</button>
+      </div>
       <div id="float-layer"></div>
     </div>
 

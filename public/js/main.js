@@ -5,8 +5,10 @@ import {
   zoomAt, resetZoom, highlightProducingHexes,
 } from './render.js';
 import { initSfx } from './sfx.js';
+import { initSound } from './sound.js';
 
 initSfx();
+initSound();
 const socket = io();
 const $ = (id) => document.getElementById(id);
 
