@@ -4,7 +4,9 @@ import {
   showVertexSpots, showEdgeSpots, showRobberSpots,
   zoomAt, resetZoom, highlightProducingHexes,
 } from './render.js';
+import { initSfx } from './sfx.js';
 
+initSfx();
 const socket = io();
 const $ = (id) => document.getElementById(id);
 
