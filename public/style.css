@@ -83,8 +83,9 @@ body {
 .btn:disabled { opacity: .4; cursor: not-allowed; }
 .btn.primary { background: var(--accent); color: #fff; }
 .btn.danger { background: #b9552e; color: #fff; }
-.btn.ghost { background: rgba(185,85,46,.2); color: #ffd9c7; border: 1.5px solid rgba(216,140,110,.75); }
-.btn.ghost:hover:not(:disabled) { background: rgba(185,85,46,.38); color: #fff; }
+/* 注意：不能叫 .ghost —— 与棋盘幽灵预览棋子的工具类（opacity:0）重名会导致按钮透明 */
+.btn.subtle { background: rgba(185,85,46,.2); color: #ffd9c7; border: 1.5px solid rgba(216,140,110,.75); }
+.btn.subtle:hover:not(:disabled) { background: rgba(185,85,46,.38); color: #fff; }
 .btn.big { width: 100%; padding: 13px; font-size: 16px; margin-top: 4px; }
 .btn.small { padding: 5px 10px; font-size: 12px; }
 .btn.build.armed { background: var(--accent); color: #fff; box-shadow: 0 0 0 3px rgba(230,126,34,.35); }
