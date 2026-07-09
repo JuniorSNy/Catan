@@ -48,9 +48,10 @@ function broadcastLobby(room) {
 function broadcastGame(room) {
   if (!room.game) return;
   const pub = room.game.publicState();
+  const hostIndex = room.players.findIndex((p) => p.token === room.hostToken);
   room.players.forEach((p, i) => {
     if (p.socketId) {
-      io.to(p.socketId).emit('state', { ...pub, you: room.game.privateState(i) });
+      io.to(p.socketId).emit('state', { ...pub, hostIndex, you: room.game.privateState(i) });
     }
   });
 }
@@ -168,6 +169,20 @@ io.on('connection', (socket) => {
     room.game = new Game(room.players.map((p) => ({ name: p.name })));
     broadcastLobby(room);
     broadcastGame(room);
+    broadcastOpenRooms();
+  });
+
+  // 房主结束本局：清空对局，全体回到本房间的等待大厅，可重新开始
+  socket.on('endGame', () => {
+    const room = myRoom;
+    if (!room) return fail('尚未加入房间');
+    if (room.hostToken !== myToken) return fail('只有房主可以结束本局');
+    if (!room.game) return fail('游戏尚未开始');
+    room.game = null;
+    for (const p of room.players) {
+      if (p.socketId) io.to(p.socketId).emit('returnToLobby');
+    }
+    broadcastLobby(room);
     broadcastOpenRooms();
   });
 

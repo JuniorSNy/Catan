@@ -83,6 +83,8 @@ body {
 .btn:disabled { opacity: .4; cursor: not-allowed; }
 .btn.primary { background: var(--accent); color: #fff; }
 .btn.danger { background: #b9552e; color: #fff; }
+.btn.ghost { background: transparent; color: #b9552e; border: 1.5px solid #d8b3a3; }
+.btn.ghost:hover:not(:disabled) { background: rgba(185,85,46,.08); }
 .btn.big { width: 100%; padding: 13px; font-size: 16px; margin-top: 4px; }
 .btn.small { padding: 5px 10px; font-size: 12px; }
 .btn.build.armed { background: var(--accent); color: #fff; box-shadow: 0 0 0 3px rgba(230,126,34,.35); }

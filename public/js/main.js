@@ -260,9 +260,28 @@ function applyState() {
   playEvents(); // 剩余事件（产出/偷牌飘字、回合横幅等；骰子已单独播放）
 }
 
+// 房主结束本局：清空对局相关状态，回到等待大厅（后续 lobby 事件会填充大厅）
+socket.on('returnToLobby', () => {
+  boardReady = false;   // 下一局需重新 initBoard
+  lastSeq = 0;
+  S = null;
+  prevHand = null;
+  armed = null;
+  discardOpen = false;
+  holdUntil = 0;
+  clearTimeout(holdTimer);
+  for (const m of ['modal-winner', 'modal-discard', 'modal-steal', 'modal-trade',
+    'modal-yop', 'modal-monopoly', 'modal-endgame']) {
+    $(m).classList.add('hidden');
+  }
+  show('screen-lobby');
+  toast('房主已结束本局，回到等待大厅');
+});
+
 const colors = () => S.players.map((p) => p.color);
 const isMyTurn = () => S.phase === 'play' && S.turn.player === myIndex;
 const isMySetup = () => S.phase === 'setup' && S.setup.current === myIndex;
+const amHost = () => !!S && S.hostIndex === myIndex;
 
 function renderAll() {
   updatePieces(S, colors());
@@ -408,6 +427,9 @@ function renderButtons() {
   for (const [id, kind] of [['btn-road', 'road'], ['btn-settlement', 'settlement'], ['btn-city', 'city']]) {
     $(id).classList.toggle('armed', armed === kind);
   }
+
+  // 房主随时可结束本局
+  $('btn-endgame').classList.toggle('hidden', !amHost());
 }
 
 // ---------- 热点交互 ----------
@@ -458,6 +480,11 @@ $('zoom-reset').onclick = () => resetZoom();
 $('btn-roll').onclick = () => { $('btn-roll').disabled = true; send({ type: 'roll' }); };
 $('btn-buydev').onclick = () => send({ type: 'buyDev' });
 $('btn-end').onclick = () => { armed = null; send({ type: 'endTurn' }); };
+
+// 结束本局（房主）：动作栏按钮需二次确认；胜利弹窗里的「再来一局」直接结束
+$('btn-endgame').onclick = () => $('modal-endgame').classList.remove('hidden');
+$('endgame-confirm').onclick = () => { $('modal-endgame').classList.add('hidden'); socket.emit('endGame'); };
+$('btn-again').onclick = () => socket.emit('endGame');
 
 // ---------- 日志 ----------
 let logRendered = 0;
@@ -555,6 +582,8 @@ function renderModals() {
     $('winner-title').textContent = `🎉 ${S.players[S.winner].name} 获胜！`;
     const scores = S.players.map((p, i) => `<p><b style="color:${p.color}">${esc(p.name)}</b>：${p.vp} 分</p>`).join('');
     $('winner-scores').innerHTML = scores;
+    $('btn-again').classList.toggle('hidden', !amHost());
+    $('winner-hint').classList.toggle('hidden', amHost());
     $('modal-winner').classList.remove('hidden');
   }
 }
