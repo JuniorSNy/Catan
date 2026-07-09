@@ -90,18 +90,19 @@ $('btn-leave').onclick = () => socket.emit('leaveRoom');
 
 // 房主：销毁房间（3 秒内点第二次才真正执行，防误触）
 let destroyArmed = null;
+function resetDestroyBtn() {
+  clearTimeout(destroyArmed);
+  destroyArmed = null;
+  $('btn-destroy').textContent = '💥 销毁房间';
+}
 $('btn-destroy').onclick = () => {
   if (destroyArmed) {
-    clearTimeout(destroyArmed);
-    destroyArmed = null;
+    resetDestroyBtn();
     socket.emit('destroyRoom');
     return;
   }
   $('btn-destroy').textContent = '⚠️ 再点一次确认销毁';
-  destroyArmed = setTimeout(() => {
-    destroyArmed = null;
-    $('btn-destroy').textContent = '💥 销毁房间';
-  }, 3000);
+  destroyArmed = setTimeout(resetDestroyBtn, 3000);
 };
 
 socket.on('leftRoom', () => {
@@ -140,6 +141,7 @@ function clearSession() {
 
 socket.on('joined', ({ code, token, index }) => {
   autoJoining = false;
+  resetDestroyBtn(); // 进入新房间时清掉上次遗留的「确认销毁」状态
   saveSession(code, token);
   myIndex = index;
   myRoomCode = code;
