@@ -219,6 +219,8 @@ export function initBoard(svgElement, boardData) {
       points: pts, class: 'hex', fill: TERRAIN_COLOR[hex.terrain],
       'data-hex': hex.id,
     }, layers.hexes);
+    // 产出闪光罩：Safari 不支持对 SVG 子元素做 CSS filter 动画，改为叠白色罩闪 opacity
+    el('polygon', { points: pts, class: 'hex-shine', 'data-hex': hex.id }, layers.hexes);
     const icon = el('text', {
       x: hex.x, y: hex.y - (hex.number ? 0.28 : 0.05),
       class: 'hex-icon', 'text-anchor': 'middle', 'dominant-baseline': 'middle',
@@ -378,7 +380,7 @@ export function showRobberSpots(currentRobber, onClick) {
 
 // 高亮本轮产出资源的板块（被强盗占的不亮）
 export function highlightProducingHexes(total, robberHex) {
-  for (const p of layers.hexes.querySelectorAll('.hex')) {
+  for (const p of layers.hexes.querySelectorAll('.hex-shine')) {
     const hid = Number(p.dataset.hex);
     const hex = board.hexes[hid];
     if (hex.number === total && hid !== robberHex) {

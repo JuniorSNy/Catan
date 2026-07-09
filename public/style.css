@@ -187,12 +187,13 @@ body {
   45%, 85% { box-shadow: 0 0 0 3px #ffd54f, 0 4px 12px rgba(0,0,0,.25); }
 }
 
-/* 产出板块闪烁提示 */
-.hex.producing { animation: hex-produce 5.2s ease; }
+/* 产出板块闪烁提示：白色闪光罩闪 opacity（Safari 不支持 SVG 子元素的 CSS filter 动画，勿改回 filter 方案） */
+.hex-shine { fill: #fff; opacity: 0; pointer-events: none; }
+.hex-shine.producing { animation: hex-produce 5.2s ease; }
 @keyframes hex-produce {
-  0%, 100% { filter: none; }
-  12%, 40%, 68% { filter: brightness(1.45) saturate(1.2); }
-  26%, 54% { filter: brightness(1.05); }
+  0%, 100% { opacity: 0; }
+  12%, 40%, 68% { opacity: .45; }
+  26%, 54% { opacity: .1; }
 }
 
 /* ---------- 侧边栏 ---------- */
@@ -272,8 +273,10 @@ body {
 #action-buttons { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
 
 /* ---------- 棋盘 SVG ---------- */
-.hex { stroke: rgba(0,0,0,.18); stroke-width: .04; transition: filter .2s; }
-.hex.robber-target:hover { filter: brightness(1.2); cursor: pointer; }
+.hex { stroke: rgba(0,0,0,.18); stroke-width: .04; transition: stroke .2s, stroke-width .2s; }
+/* 悬停高亮用描边而非 filter：Safari 不支持 SVG 子元素的 CSS filter */
+.hex.robber-target { cursor: pointer; }
+.hex.robber-target:hover { stroke: #ffd54f; stroke-width: .09; }
 .hex-icon { font-size: .52px; pointer-events: none; user-select: none; }
 .token-circle { fill: #f7efd9; stroke: #b8a880; stroke-width: .03; }
 .token-num { font-size: .38px; font-weight: 700; text-anchor: middle; pointer-events: none; }
