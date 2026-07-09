@@ -673,21 +673,24 @@ body {
 .die-event.ev-politics { background: linear-gradient(160deg, #7da7d9, #3a6ea5); }
 .die-event.ev-science { background: linear-gradient(160deg, #8cc084, #4a8c4a); }
 
-/* 野蛮人航道 */
-#barb-bar {
-  display: flex; align-items: center; gap: 12px; margin-left: auto;
-  background: rgba(20,35,52,.62); border: 1px solid rgba(255,255,255,.3);
-  border-radius: 14px; padding: 8px 16px; color: #fff; font-size: 17px;
+/* 野蛮人航道（SVG 内，单位为棋盘坐标，随地图缩放） */
+.barb-route {
+  fill: none; stroke: rgba(255,255,255,.55); stroke-width: .04;
+  stroke-dasharray: .16 .13; stroke-linecap: round;
 }
-#barb-track { display: flex; align-items: center; gap: 5px; }
-.barb-dot {
-  width: 26px; height: 26px; border-radius: 50%;
-  border: 2px solid rgba(255,255,255,.5); background: rgba(255,255,255,.12);
-  display: inline-grid; place-items: center; font-size: 17px; line-height: 1;
+.barb-step {
+  fill: rgba(20,35,52,.35); stroke: rgba(255,255,255,.65); stroke-width: .028;
+  transition: fill .4s, stroke .4s;
 }
-.barb-dot.filled { background: rgba(255,120,80,.55); border-color: #ffb08c; }
-.barb-isle { font-size: 24px; margin-left: 2px; }
-#barb-vs { font-weight: 700; font-family: var(--font-num); font-size: 18px; }
+.barb-step.passed { fill: rgba(255,120,80,.75); stroke: #ffb08c; }
+.barb-ship { transition: transform .9s ease; }
+.barb-ship-bg { fill: rgba(20,35,52,.72); stroke: rgba(255,255,255,.65); stroke-width: .03; }
+.barb-ship-ico { font-size: .34px; text-anchor: middle; }
+.barb-badge-bg { fill: rgba(20,35,52,.62); stroke: rgba(255,255,255,.35); stroke-width: .025; }
+.barb-badge-text {
+  font-size: .3px; text-anchor: middle; fill: #fff;
+  font-weight: 700; font-family: var(--font-num);
+}
 
 /* 商品手牌（无插画，渐变底 + emoji 图标） */
 .res-cloth { --res-color: #c9a227; background-image: linear-gradient(165deg, #f7e08a, #d9b23a); }
@@ -770,8 +773,4 @@ body {
 @media (max-width: 900px) {
   #side-panel { width: 210px; }
   .res-card, .dev-card { width: 44px; height: 58px; font-size: 18px; }
-  #barb-bar { gap: 8px; padding: 5px 10px; font-size: 14px; }
-  .barb-dot { width: 20px; height: 20px; font-size: 13px; }
-  .barb-isle { font-size: 18px; }
-  #barb-vs { font-size: 15px; }
 }

@@ -3,6 +3,7 @@ import {
   initBoard, updatePieces, updateCKPieces, clearHotspots,
   showVertexSpots, showEdgeSpots, showRobberSpots, showHexSpots,
   zoomAt, resetZoom, highlightProducingHexes, hexPixelPosition,
+  updateBarbarianTrack,
 } from './render.js';
 import { initSfx } from './sfx.js';
 import { initSound } from './sound.js';
@@ -498,24 +499,16 @@ function renderAll() {
   renderTradeBanner();
 }
 
-// ---------- 野蛮人航道 ----------
+// ---------- 野蛮人航道（画在棋盘海面上，见 render.js） ----------
 function renderBarbBar() {
-  const bar = $('barb-bar');
   if (S.mode !== 'ck' || S.phase === 'setup') {
-    bar.classList.add('hidden');
+    updateBarbarianTrack(null);
     return;
   }
-  bar.classList.remove('hidden');
-  const { pos, track } = S.ck.barbarians;
-  let dots = '';
-  for (let i = 1; i <= track; i++) {
-    dots += `<span class="barb-dot${i <= pos ? ' filled' : ''}">${i === pos ? '⛵' : ''}</span>`;
-  }
-  $('barb-track').innerHTML = `${dots}<span class="barb-isle">🏝️</span>`;
   const strength = Object.values(S.buildings).filter((b) => b.type === 'city').length;
   const defense = Object.values(S.ck.knights).filter((k) => k.active)
     .reduce((s, k) => s + k.level, 0);
-  $('barb-vs').innerHTML = `🏰${strength} vs ⚔️${defense}`;
+  updateBarbarianTrack(S.ck, strength, defense);
 }
 
 function renderStatus() {

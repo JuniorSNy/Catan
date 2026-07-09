@@ -15,6 +15,8 @@ const layers = {};
 const roadEls = new Map();
 const buildingEls = new Map(); // vertexId -> {el, type}
 let robberEl = null;
+let isle = null;     // 岛屿几何 {cx, cy, hexR}，野蛮人航道定位用
+let barbEls = null;  // 野蛮人航道的持久元素（船用 transform 过渡动画，不能每次重建）
 
 // ---------- 缩放与平移 ----------
 const MAX_ZOOM = 4;
@@ -242,14 +244,16 @@ export function initBoard(svgElement, boardData) {
   buildDefs();
   vpG = el('g', { id: 'viewport' }, svg);
   applyVB();
-  for (const name of ['island', 'hexes', 'harbors', 'roads', 'walls', 'buildings', 'knights', 'marks', 'robber', 'hotspots']) {
+  for (const name of ['island', 'barb', 'hexes', 'harbors', 'roads', 'walls', 'buildings', 'knights', 'marks', 'robber', 'hotspots']) {
     layers[name] = el('g', { id: `layer-${name}` }, vpG);
   }
+  barbEls = null;
 
   // 岛屿底座：不规则浅滩 + 沙滩海岸线（blob 形状确定性生成），外围点缀漂浮的浪花
   const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
   const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
   const hexR = Math.max(...board.hexes.map((hx) => Math.hypot(hx.x - cx, hx.y - cy))) + 1;
+  isle = { cx, cy, hexR };
   el('path', {
     d: blobPath(cx, cy, hexR + 0.62, 0.18, 1.3), fill: 'rgba(195,232,244,.32)',
     stroke: 'rgba(255,255,255,.45)', 'stroke-width': 0.035, 'stroke-dasharray': '.16 .12',
@@ -454,6 +458,53 @@ export function updateCKPieces(state, colors, onKnightClick) {
     const t = el('text', { x: hex.x + 0.45, y: hex.y - 0.38, class: 'merchant-ico' }, g);
     t.textContent = '⛺';
   }
+}
+
+// ---------- 野蛮人航道（画在海面上，随棋盘缩放平移） ----------
+// ck 传 null 时清除；船的位置用 transform 过渡，元素持久化避免重建打断动画
+export function updateBarbarianTrack(ck, strength, defense) {
+  const layer = layers.barb;
+  if (!layer) return;
+  if (!ck) {
+    layer.innerHTML = '';
+    barbEls = null;
+    return;
+  }
+  const { pos, track } = ck.barbarians;
+  if (!barbEls) {
+    layer.innerHTML = '';
+    const { cx, cy, hexR } = isle;
+    // 航线：从右下角外海出发，沿岛的东侧海带逆时针绕到东北岸登陆。
+    // 参数化取点（角度 40° → -50°，半径由外海渐收到近岸），t ∈ [0,1]
+    const pt = (t) => {
+      const a = (Math.PI / 180) * (40 - 90 * t);
+      const r = hexR + 1.3 - 1.0 * t;
+      return { x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r * 0.92 };
+    };
+    const samples = [];
+    for (let i = 0; i <= 40; i++) samples.push(pt(i / 40));
+    const d = `M ${samples.map((s) => `${s.x.toFixed(3)} ${s.y.toFixed(3)}`).join(' L ')}`;
+    el('path', { d, class: 'barb-route' }, layer);
+    const dots = [];
+    for (let i = 1; i <= track; i++) {
+      const s = pt(i / track);
+      dots.push(el('circle', { cx: s.x, cy: s.y, r: 0.1, class: 'barb-step' }, layer));
+    }
+    // 🏰 vs ⚔️ 徽章挂在航线起点（右下角外海）下方
+    const s0 = pt(0);
+    const badge = el('g', {}, layer);
+    el('rect', { x: s0.x - 1.0, y: s0.y + 0.42, width: 2.0, height: 0.56, rx: 0.28, class: 'barb-badge-bg' }, badge);
+    const vs = el('text', { x: s0.x, y: s0.y + 0.81, class: 'barb-badge-text' }, badge);
+    const ship = el('g', { class: 'barb-ship' }, layer);
+    el('circle', { cx: 0, cy: 0.02, r: 0.27, class: 'barb-ship-bg' }, ship);
+    const ico = el('text', { x: 0, y: 0.13, class: 'barb-ship-ico' }, ship);
+    ico.textContent = '⛵';
+    barbEls = { pt, dots, ship, vs };
+  }
+  barbEls.dots.forEach((d, i) => d.classList.toggle('passed', i + 1 <= pos));
+  const s = barbEls.pt(pos / track);
+  barbEls.ship.style.transform = `translate(${s.x}px, ${s.y}px)`;
+  barbEls.vs.textContent = `🏰${strength} vs ⚔️${defense}`;
 }
 
 // ---------- 热点交互 ----------
