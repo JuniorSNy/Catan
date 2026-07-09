@@ -255,6 +255,7 @@ export const ckMethods = {
     }
     delete this.knights[from];
     this.knights[to] = k;
+    k.active = false; // 行动后骑士休整
     k.actedTurn = this.turn.count;
     this.addEvent('knightMove', { player: p, from, to });
     this.addLog(`${this.players[p].name} 移动了骑士`);
