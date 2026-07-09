@@ -8,8 +8,8 @@ const TERRAIN_COLOR = {
 const TERRAIN_ICON = {
   forest: '🌲', hills: '🧱', pasture: '🐑', fields: '🌾', mountains: '⛰️', desert: '🏜️',
 };
-const HARBOR_LABEL = {
-  any: '3:1', wood: '2:1🌲', brick: '2:1🧱', sheep: '2:1🐑', wheat: '2:1🌾', ore: '2:1🪨',
+const HARBOR_ICON = {
+  wood: '🌲', brick: '🧱', sheep: '🐑', wheat: '🌾', ore: '🪨',
 };
 
 let svg, board;
@@ -250,16 +250,17 @@ export function initBoard(svgElement, boardData) {
       d: `M ${v1.x} ${v1.y} L ${hb.x} ${hb.y} L ${v2.x} ${v2.y}`,
       class: 'harbor-line',
     }, layers.harbors);
-    el('circle', { cx: hb.x, cy: hb.y, r: 0.26, class: 'harbor-badge' }, layers.harbors);
-    const t = el('text', {
-      x: hb.x, y: hb.y + (hb.type === 'any' ? 0.1 : 0.08),
-      class: 'harbor-text',
-    }, layers.harbors);
     if (hb.type === 'any') {
+      el('circle', { cx: hb.x, cy: hb.y, r: 0.26, class: 'harbor-badge' }, layers.harbors);
+      const t = el('text', { x: hb.x, y: hb.y + 0.1, class: 'harbor-text' }, layers.harbors);
       t.textContent = '3:1';
     } else {
-      t.setAttribute('font-size', '0.22');
-      t.textContent = HARBOR_LABEL[hb.type];
+      // 上图标下比例，两行都收在徽章内
+      el('circle', { cx: hb.x, cy: hb.y, r: 0.3, class: 'harbor-badge' }, layers.harbors);
+      const icon = el('text', { x: hb.x, y: hb.y + 0.02, class: 'harbor-text harbor-icon' }, layers.harbors);
+      icon.textContent = HARBOR_ICON[hb.type];
+      const rate = el('text', { x: hb.x, y: hb.y + 0.23, class: 'harbor-text harbor-rate' }, layers.harbors);
+      rate.textContent = '2:1';
     }
   }
 

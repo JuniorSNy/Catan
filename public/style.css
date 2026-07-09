@@ -283,6 +283,9 @@ body {
 
 .harbor-badge { fill: #fff; stroke: #8a7a55; stroke-width: .025; }
 .harbor-text { font-size: .3px; text-anchor: middle; pointer-events: none; }
+/* 2:1 港口徽章内部：上图标、下比例（CSS 字号会覆盖 SVG font-size 属性，必须写在这里） */
+.harbor-icon { font-size: .25px; }
+.harbor-rate { font-size: .15px; font-weight: 700; fill: #6b5a35; }
 .harbor-line { stroke: #8a7a55; stroke-width: .035; stroke-dasharray: .1 .07; fill: none; }
 
 .road-piece { stroke-linecap: round; stroke-width: .16; }
