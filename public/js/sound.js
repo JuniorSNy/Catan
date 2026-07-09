@@ -4,6 +4,8 @@ import { sfx, setSfxVolume, getSfxVolume } from './sfx.js';
 
 // 按序尝试的文件名：放哪个都行（mp4/m4a 是 AAC 音频，带视频轨也只播声音）
 const BGM_CANDIDATES = ['audio/bgm.mp3', 'audio/bgm.mp4', 'audio/bgm.m4a', 'audio/bgm.ogg'];
+// BGM 音量上限：滑条 100% 时的实际音量（背景音乐只作衬托，不该盖过音效和人声）
+const BGM_MAX = 0.6;
 const $ = (id) => document.getElementById(id);
 
 let audio = null;
@@ -18,7 +20,7 @@ function ensureAudio() {
   if (audio) return audio;
   audio = new Audio(BGM_CANDIDATES[0]);
   audio.loop = true;
-  audio.volume = bgmVol;
+  audio.volume = bgmVol * BGM_MAX;
   audio.addEventListener('error', () => {
     srcIdx += 1;
     if (srcIdx < BGM_CANDIDATES.length) {
@@ -59,7 +61,7 @@ export function initSound() {
   $('bgm-range').addEventListener('input', (e) => {
     bgmVol = e.target.value / 100;
     localStorage.setItem('catan_bgm_vol', String(bgmVol));
-    if (audio) audio.volume = bgmVol;
+    if (audio) audio.volume = bgmVol * BGM_MAX;
   });
 
   $('sfx-range').addEventListener('input', (e) => {
