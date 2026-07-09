@@ -73,6 +73,7 @@ function pickingState(room) {
       index: i,
     })),
     first: room.picking.first, // -1 = 随机
+    mode: room.picking.mode,   // 'base' | 'ck'
   };
 }
 
@@ -203,6 +204,7 @@ io.on('connection', (socket) => {
       // 上一局选过的颜色作为默认（重开一局时不用重选）
       colors: room.players.map((p) => (Number.isInteger(p.colorIdx) ? p.colorIdx : null)),
       first: -1,
+      mode: room.lastMode || 'base', // 上一局的模式作为默认
     };
     broadcastPicking(room);
     broadcastOpenRooms(); // 选择阶段的房间不再对外开放
@@ -222,6 +224,16 @@ io.on('connection', (socket) => {
       if (colors.some((c, i) => c === colorIdx && i !== idx)) return fail('该颜色已被别人选走');
       colors[idx] = colorIdx;
     }
+    broadcastPicking(room);
+  });
+
+  // 房主选择游戏模式（基础版 / 城市与骑士）
+  socket.on('pickMode', ({ mode }) => {
+    const room = myRoom;
+    if (!room || !room.picking) return;
+    if (room.hostToken !== myToken) return fail('只有房主可以选择模式');
+    if (mode !== 'base' && mode !== 'ck') return;
+    room.picking.mode = mode;
     broadcastPicking(room);
   });
 
@@ -251,10 +263,11 @@ io.on('connection', (socket) => {
     const room = myRoom;
     if (!room || !room.picking) return;
     if (room.hostToken !== myToken) return fail('只有房主可以开始对局');
-    const { colors, first } = room.picking;
+    const { colors, first, mode } = room.picking;
     if (colors.some((c) => c === null)) return fail('还有玩家未选颜色');
     const start = first >= 0 ? first : Math.floor(Math.random() * room.players.length);
     room.players.forEach((p, i) => { p.colorIdx = colors[i]; }); // 记住选择，下局作为默认
+    room.lastMode = mode;
     room.game = new Game(
       room.players.map((p, i) => ({
         name: p.name,
@@ -263,6 +276,7 @@ io.on('connection', (socket) => {
       })),
       Math.random,
       start,
+      mode,
     );
     room.picking = null;
     broadcastLobby(room);
@@ -340,6 +354,17 @@ io.on('connection', (socket) => {
         case 'respondTrade': g.respondTrade(p, !!data.accept); break;
         case 'acceptTradeWith': g.acceptTradeWith(p, data.target); break;
         case 'endTurn': g.endTurn(p); break;
+        // ---- 城市与骑士 ----
+        case 'buildKnight': g.buildKnight(p, data.vertex); break;
+        case 'upgradeKnight': g.upgradeKnight(p, data.vertex); break;
+        case 'activateKnight': g.activateKnight(p, data.vertex); break;
+        case 'moveKnight': g.moveKnight(p, data.from, data.to); break;
+        case 'chaseRobber': g.chaseRobber(p, data.vertex); break;
+        case 'buyImprovement': g.buyImprovement(p, data.track); break;
+        case 'buildWall': g.buildWall(p, data.vertex); break;
+        case 'playProgress': g.playProgress(p, data.card, data.payload || {}); break;
+        case 'aqueductPick': g.aqueductPick(p, data.res); break;
+        case 'chooseCityLoss': g.chooseCityLoss(p, data.vertex); break;
         default: return fail('未知操作');
       }
       broadcastGame(room);

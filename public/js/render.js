@@ -242,7 +242,7 @@ export function initBoard(svgElement, boardData) {
   buildDefs();
   vpG = el('g', { id: 'viewport' }, svg);
   applyVB();
-  for (const name of ['island', 'hexes', 'harbors', 'roads', 'buildings', 'robber', 'hotspots']) {
+  for (const name of ['island', 'hexes', 'harbors', 'roads', 'walls', 'buildings', 'knights', 'marks', 'robber', 'hotspots']) {
     layers[name] = el('g', { id: `layer-${name}` }, vpG);
   }
 
@@ -362,6 +362,13 @@ export function updateRobber(hexId) {
 }
 
 export function updatePieces(state, colors) {
+  // 被移除的道路（外交官卡）
+  for (const [eid, g] of [...roadEls]) {
+    if (state.roads[eid] === undefined) {
+      g.remove();
+      roadEls.delete(eid);
+    }
+  }
   // 道路
   for (const [eid, player] of Object.entries(state.roads)) {
     if (roadEls.has(eid)) continue;
@@ -394,6 +401,59 @@ export function updatePieces(state, colors) {
   }
 
   updateRobber(state.robber);
+}
+
+// ---------- 城市与骑士棋子（骑士/城墙/大都会/商人） ----------
+// onKnightClick(vertexId, knight)：骑士被点击（自己的骑士菜单 / 进步卡选择目标）
+export function updateCKPieces(state, colors, onKnightClick) {
+  if (!state.ck) return;
+  // 城墙：城市底下的一圈护环
+  layers.walls.innerHTML = '';
+  for (const [vid, owner] of Object.entries(state.ck.walls)) {
+    const v = board.vertices[vid];
+    el('circle', {
+      cx: v.x, cy: v.y + 0.02, r: 0.3, class: 'wall-ring',
+      stroke: colors[owner],
+    }, layers.walls);
+  }
+
+  // 骑士：圆形棋子 + 等级数字；激活亮金边，未激活灰暗
+  layers.knights.innerHTML = '';
+  for (const [vid, k] of Object.entries(state.ck.knights)) {
+    const v = board.vertices[vid];
+    const g = el('g', { class: `knight-piece${k.active ? ' active' : ' idle'}` }, layers.knights);
+    el('circle', { cx: v.x, cy: v.y + 0.02, r: 0.17, fill: 'rgba(0,0,0,.4)' }, g);
+    el('circle', { cx: v.x, cy: v.y, r: 0.17, fill: colors[k.player], class: 'knight-body' }, g);
+    el('circle', { cx: v.x, cy: v.y, r: 0.17, class: 'knight-ring' }, g);
+    const t = el('text', { x: v.x, y: v.y + 0.062, class: 'knight-lv' }, g);
+    t.textContent = k.level;
+    if (onKnightClick) {
+      g.style.cursor = 'pointer';
+      g.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        onKnightClick(Number(vid), k);
+      });
+    }
+  }
+
+  // 大都会：城市上方的金星；商人：板块上的商栈标记
+  layers.marks.innerHTML = '';
+  for (const m of Object.values(state.ck.metropolis)) {
+    if (!m) continue;
+    const v = board.vertices[m.vertex];
+    const t = el('text', { x: v.x, y: v.y - 0.28, class: 'metro-star' }, layers.marks);
+    t.textContent = '★';
+  }
+  if (state.ck.merchant) {
+    const hex = board.hexes[state.ck.merchant.hex];
+    const g = el('g', { class: 'merchant-mark' }, layers.marks);
+    el('circle', {
+      cx: hex.x + 0.45, cy: hex.y - 0.45, r: 0.19, class: 'merchant-bg',
+      stroke: colors[state.ck.merchant.player],
+    }, g);
+    const t = el('text', { x: hex.x + 0.45, y: hex.y - 0.38, class: 'merchant-ico' }, g);
+    t.textContent = '⛺';
+  }
 }
 
 // ---------- 热点交互 ----------
@@ -452,6 +512,21 @@ export function showRobberSpots(currentRobber, onClick) {
   for (const p of layers.hexes.querySelectorAll('.hex')) {
     const hid = Number(p.dataset.hex);
     if (hid === currentRobber) continue;
+    p.classList.add('robber-target');
+    p.onclick = () => {
+      clearHotspots();
+      onClick(hid);
+    };
+  }
+}
+
+// 指定板块列表可点击（商人放置 / 发明家换数字等）
+export function showHexSpots(hexIds, onClick) {
+  clearHotspots();
+  const set = new Set(hexIds);
+  for (const p of layers.hexes.querySelectorAll('.hex')) {
+    const hid = Number(p.dataset.hex);
+    if (!set.has(hid)) continue;
     p.classList.add('robber-target');
     p.onclick = () => {
       clearHotspots();

@@ -1,7 +1,7 @@
 // 客户端主逻辑：Socket 通信、界面状态、交互与动画
 import {
-  initBoard, updatePieces, clearHotspots,
-  showVertexSpots, showEdgeSpots, showRobberSpots,
+  initBoard, updatePieces, updateCKPieces, clearHotspots,
+  showVertexSpots, showEdgeSpots, showRobberSpots, showHexSpots,
   zoomAt, resetZoom, highlightProducingHexes, hexPixelPosition,
 } from './render.js';
 import { initSfx } from './sfx.js';
@@ -13,15 +13,23 @@ const socket = io();
 const $ = (id) => document.getElementById(id);
 
 const RES = ['wood', 'brick', 'sheep', 'wheat', 'ore'];
+const COM = ['cloth', 'coin', 'paper']; // 城市与骑士：商品
 const RES_META = {
   wood: { icon: '🌲', name: '木材' },
   brick: { icon: '🧱', name: '砖块' },
   sheep: { icon: '🐑', name: '羊毛' },
   wheat: { icon: '🌾', name: '小麦' },
   ore: { icon: '🪨', name: '矿石' },
+  cloth: { icon: '🧶', name: '布匹' },
+  coin: { icon: '🪙', name: '铸币' },
+  paper: { icon: '📜', name: '纸张' },
 };
-// 行内资源小图标（替代 emoji；emoji 仅留作 title 等纯文本场景）
-const resIcon = (r) => `<img class="res-ico" src="/assets/opt/icon-${r}.webp" alt="${RES_META[r].name}">`;
+// 当前模式下的全部牌类型
+const cardList = () => (S && S.mode === 'ck' ? [...RES, ...COM] : RES);
+// 行内资源小图标（资源用插画，商品用 emoji）
+const resIcon = (r) => (COM.includes(r)
+  ? `<span class="res-ico-emoji" title="${RES_META[r].name}">${RES_META[r].icon}</span>`
+  : `<img class="res-ico" src="/assets/opt/icon-${r}.webp" alt="${RES_META[r].name}">`);
 // 骰面插画
 const setDie = (el, n) => { el.innerHTML = `<img src="/assets/opt/die-${n}.webp" alt="${n}">`; };
 const DEV_META = {
@@ -30,6 +38,45 @@ const DEV_META = {
   roadBuilding: { icon: '🛤️', name: '修路' },
   yearOfPlenty: { icon: '🌟', name: '丰收' },
   monopoly: { icon: '💰', name: '垄断' },
+};
+// 进步卡（城市与骑士）
+const PROG_META = {
+  merchant: { name: '商人', desc: '放在自己建筑相邻的板块上：该资源 2:1 交易，+1 分（可被他人夺走）' },
+  merchantFleet: { name: '商船队', desc: '本回合内指定一种资源/商品按 2:1 与银行交易' },
+  commercialHarbor: { name: '商业港', desc: '与每位对手交换：你出 1 张资源，换对方 1 张商品（随机）' },
+  masterMerchant: { name: '商业大亨', desc: '从一名分数比你高的玩家手中拿走 2 张牌' },
+  resourceMonopoly: { name: '资源垄断', desc: '指定一种资源，每位对手最多上缴 2 张' },
+  tradeMonopoly: { name: '商品垄断', desc: '指定一种商品，每位对手上缴 1 张' },
+  bishop: { name: '主教', desc: '移动强盗，并从相邻的每位玩家各偷 1 张牌' },
+  deserter: { name: '逃兵', desc: '移除一名对手的骑士，你在自己路网上放置一个同级骑士' },
+  diplomat: { name: '外交官', desc: '移除一条「开放道路」（自己的可立即重放）' },
+  intrigue: { name: '阴谋', desc: '驱逐一名位于你道路上的对手骑士' },
+  saboteur: { name: '破坏者', desc: '分数不低于你的玩家全部弃一半手牌' },
+  spy: { name: '间谍', desc: '偷看并拿走一名对手的进步卡（随机）' },
+  warlord: { name: '军阀', desc: '免费激活你的所有骑士' },
+  wedding: { name: '婚礼', desc: '分数比你高的玩家各给你 2 张牌' },
+  alchemist: { name: '炼金术士', desc: '掷骰前打出：自选两个骰子的点数' },
+  crane: { name: '起重机', desc: '本回合下一次城市升级少付 1 张商品' },
+  engineer: { name: '工程师', desc: '免费修建一座城墙' },
+  inventor: { name: '发明家', desc: '交换两块板块的数字（2/6/8/12 除外）' },
+  irrigation: { name: '灌溉', desc: '每块与你建筑相邻的麦田给你 2 张小麦' },
+  medicine: { name: '医学', desc: '用 2矿石 1小麦 升级一座城市' },
+  mining: { name: '采矿', desc: '每块与你建筑相邻的矿山给你 2 张矿石' },
+  roadBuilding: { name: '修路', desc: '免费修 2 条路' },
+  smith: { name: '铁匠', desc: '免费升级 2 名骑士各一级' },
+};
+const TRACKS = ['trade', 'politics', 'science'];
+const TRACK_META = {
+  trade: { name: '贸易', com: 'cloth', color: '#c9a227', perk3: '商栈：商品可 2:1 与银行交易' },
+  politics: { name: '政治', com: 'coin', color: '#3a6ea5', perk3: '城堡：可将骑士升到 3 级' },
+  science: { name: '科学', com: 'paper', color: '#4a8c4a', perk3: '引水渠：无产出时任选 1 张资源' },
+};
+// 事件骰骰面
+const EVENT_FACE = {
+  ship: { icon: '⛵', cls: 'ev-ship', name: '野蛮人船' },
+  trade: { icon: '🏛️', cls: 'ev-trade', name: '贸易城门' },
+  politics: { icon: '🏛️', cls: 'ev-politics', name: '政治城门' },
+  science: { icon: '🏛️', cls: 'ev-science', name: '科学城门' },
 };
 
 let S = null;          // 最新游戏状态
@@ -132,6 +179,14 @@ $('pick-cancel').onclick = () => socket.emit('pickCancel');
 function renderPicking(pk) {
   myIndex = pk.you; // 顺便校正本地下标（有人退出房间后下标可能变化）
   const iAmHost = !!pk.players[pk.you]?.isHost;
+
+  // 游戏模式（房主可切换）
+  for (const [id, mode] of [['mode-base', 'base'], ['mode-ck', 'ck']]) {
+    const b = $(id);
+    b.classList.toggle('active', pk.mode === mode);
+    b.disabled = !iAmHost;
+    b.onclick = () => socket.emit('pickMode', { mode });
+  }
 
   // 颜色格：空闲可选，自己已选的再点一次取消，别人选走的置灰并显示名字
   const box = $('pick-colors');
@@ -354,6 +409,8 @@ socket.on('state', (state) => {
     boardReady = true;
     // 首次加载/重连：不重播历史动画事件
     lastSeq = state.events.reduce((m, e) => Math.max(m, e.seq), lastSeq);
+  } else if (state.events.some((e) => e.type === 'inventor' && e.seq > lastSeq)) {
+    initBoard($('board'), state.board); // 发明家换了数字令牌，重建棋盘
   }
   show('screen-game');
 
@@ -361,7 +418,7 @@ socket.on('state', (state) => {
   const diceEvent = state.events.find((e) => e.type === 'dice' && e.seq > lastSeq);
   if (diceEvent) {
     lastSeq = diceEvent.seq;
-    animateDiceRoll(diceEvent.dice[0], diceEvent.dice[1]);
+    animateDiceRoll(diceEvent.dice[0], diceEvent.dice[1], diceEvent.eventDie);
     holdUntil = Date.now() + DICE_ROLL_MS + 900;
   }
 
@@ -390,9 +447,12 @@ socket.on('returnToLobby', () => {
   holdUntil = 0;
   clearTimeout(holdTimer);
   for (const m of ['modal-winner', 'modal-discard', 'modal-steal', 'modal-trade',
-    'modal-yop', 'modal-monopoly', 'modal-endgame']) {
+    'modal-yop', 'modal-monopoly', 'modal-endgame', 'modal-improve', 'modal-aqueduct',
+    'modal-alchemist', 'modal-pick', 'modal-knightmenu']) {
     $(m).classList.add('hidden');
   }
+  cancelProgAction();
+  $('aqueduct-btns').innerHTML = '';
   show('screen-lobby');
   toast('房主已结束本局，回到等待大厅');
 });
@@ -404,7 +464,9 @@ const amHost = () => !!S && S.hostIndex === myIndex;
 
 function renderAll() {
   updatePieces(S, colors());
+  if (S.mode === 'ck') updateCKPieces(S, colors(), onKnightClick);
   renderStatus();
+  renderBarbBar();
   renderPlayers();
   renderHand();
   renderDevCards();
@@ -415,12 +477,33 @@ function renderAll() {
   renderTradeBanner();
 }
 
+// ---------- 野蛮人航道 ----------
+function renderBarbBar() {
+  const bar = $('barb-bar');
+  if (S.mode !== 'ck' || S.phase === 'setup') {
+    bar.classList.add('hidden');
+    return;
+  }
+  bar.classList.remove('hidden');
+  const { pos, track } = S.ck.barbarians;
+  let dots = '';
+  for (let i = 1; i <= track; i++) {
+    dots += `<span class="barb-dot${i <= pos ? ' filled' : ''}">${i === pos ? '⛵' : ''}</span>`;
+  }
+  $('barb-track').innerHTML = `${dots}<span class="barb-isle">🏝️</span>`;
+  const strength = Object.values(S.buildings).filter((b) => b.type === 'city').length;
+  const defense = Object.values(S.ck.knights).filter((k) => k.active)
+    .reduce((s, k) => s + k.level, 0);
+  $('barb-vs').innerHTML = `🏰${strength} vs ⚔️${defense}`;
+}
+
 function renderStatus() {
   const cur = S.players[S.turn.player];
   let text = '';
   if (S.phase === 'setup') {
     const p = S.players[S.setup.current];
-    const what = S.setup.awaiting === 'settlement' ? '村庄' : '道路';
+    const what = S.setup.awaiting === 'settlement'
+      ? (S.setup.building === 'city' ? '城市' : '村庄') : '道路';
     text = S.setup.current === myIndex
       ? `📍 请放置你的${what}（${S.setup.pos + 1}/${S.setup.total}）`
       : `等待 ${p.name} 放置${what}…`;
@@ -435,7 +518,15 @@ function renderStatus() {
     } else if (st === 'robber') text = isMyTurn() ? '🦹 请点击一个板块移动强盗' : `${cur.name} 正在移动强盗…`;
     else if (st === 'steal') text = isMyTurn() ? '🕵️ 请选择偷取对象' : `${cur.name} 正在选择偷取对象…`;
     else if (st === 'roadbuilding') text = isMyTurn() ? `🛤️ 修路卡：还可免费修 ${S.turn.freeRoads} 条路` : `${cur.name} 正在修路…`;
-    else text = isMyTurn() ? '你的回合：建造、交易或结束回合' : `${cur.name} 的回合`;
+    else if (st === 'aqueduct') {
+      const names = S.ck.pendingAqueduct.map((i) => S.players[i].name).join('、');
+      text = S.ck.pendingAqueduct.includes(myIndex) ? '🚰 引水渠：请任选 1 张资源' : `等待引水渠选择：${names}`;
+    } else if (st === 'barbarianLoss') {
+      const names = S.ck.pendingCityLoss.map((i) => S.players[i].name).join('、');
+      text = S.ck.pendingCityLoss.includes(myIndex)
+        ? '💥 野蛮人来袭！请点击你的一座城市（将被摧毁）'
+        : `野蛮人来袭！等待 ${names} 选择被摧毁的城市…`;
+    } else text = isMyTurn() ? '你的回合：建造、交易或结束回合' : `${cur.name} 的回合`;
   }
   $('status-text').textContent = text;
 
@@ -445,10 +536,21 @@ function renderStatus() {
     if (Date.now() >= diceAnimUntil) {
       setDie($('die1'), S.turn.dice[0]);
       setDie($('die2'), S.turn.dice[1]);
+      if (S.mode === 'ck' && S.ck.eventDie) setEventDie($('die3'), S.ck.eventDie);
     }
   } else if (Date.now() >= diceAnimUntil) {
     $('dice-box').classList.add('hidden');
   }
+  $('die3').classList.toggle('hidden', S.mode !== 'ck');
+}
+
+function setEventDie(el, face) {
+  const f = EVENT_FACE[face];
+  // 只换骰面配色类，保留 rolling/settle 动画类
+  for (const key of Object.keys(EVENT_FACE)) el.classList.remove(EVENT_FACE[key].cls);
+  el.classList.add(f.cls);
+  el.textContent = f.icon;
+  el.title = f.name;
 }
 
 function renderPlayers() {
@@ -460,9 +562,20 @@ function renderPlayers() {
     div.className = `player-card${active ? ' active' : ''}`;
     div.id = `player-card-${i}`;
     div.style.borderLeftColor = p.color;
+    const ckMode = S.mode === 'ck';
     const badges = [];
     if (S.awards.longestRoad?.player === i) badges.push('<span class="badge">🛤️ 最长道路</span>');
-    if (S.awards.largestArmy?.player === i) badges.push('<span class="badge">⚔️ 最大军队</span>');
+    if (!ckMode && S.awards.largestArmy?.player === i) badges.push('<span class="badge">⚔️ 最大军队</span>');
+    if (ckMode) {
+      for (const t of TRACKS) {
+        if (S.ck.metropolis[t]?.player === i) badges.push(`<span class="badge">🏛️ ${TRACK_META[t].name}大都会</span>`);
+      }
+      if (S.ck.merchant?.player === i) badges.push('<span class="badge">⛺ 商人</span>');
+      if (p.defenderVP > 0) badges.push(`<span class="badge">🏅 守护者×${p.defenderVP}</span>`);
+    }
+    const ckStats = ckMode
+      ? `<span title="城市升级：贸易/政治/科学">${TRACKS.map((t) => `<b style="color:${TRACK_META[t].color}">${TRACK_META[t].name[0]}${p.improvements[t]}</b>`).join(' ')}</span>`
+      : `<span title="已出骑士">⚔️ ${p.knightsPlayed}</span>`;
     div.innerHTML = `
       <div class="p-name">
         <span>${esc(p.name)}${i === myIndex ? '（我）' : ''}${p.connected ? '' : ' <span class="offline">离线</span>'}</span>
@@ -470,8 +583,8 @@ function renderPlayers() {
       </div>
       <div class="p-stats">
         <span title="手牌">🃏 ${p.handCount}</span>
-        <span title="发展卡">🎴 ${p.devCount}</span>
-        <span title="已出骑士">⚔️ ${p.knightsPlayed}</span>
+        <span title="${ckMode ? '进步卡' : '发展卡'}">🎴 ${p.devCount}</span>
+        ${ckStats}
         ${badges.join('')}
       </div>`;
     panel.appendChild(div);
@@ -481,14 +594,14 @@ function renderPlayers() {
 function renderHand() {
   const wrap = $('hand-cards');
   wrap.innerHTML = '';
-  for (const r of RES) {
+  for (const r of cardList()) {
     const n = S.you.hand[r];
     const div = document.createElement('div');
     div.className = `res-card res-${r}`;
-    // 卡面是插画（CSS 背景图），不再叠 emoji，只留数量徽章
-    div.innerHTML = `<span class="cnt">${n}</span>`;
+    // 资源卡面是插画（CSS 背景图）；商品卡无插画，叠 emoji 图标
+    div.innerHTML = `${COM.includes(r) ? `<span class="com-ico">${RES_META[r].icon}</span>` : ''}<span class="cnt">${n}</span>`;
     div.title = `${RES_META[r].name} ×${n}（银行汇率 ${S.you.rates[r]}:1）`;
-    if (prevHand && n > prevHand[r]) div.classList.add('bump');
+    if (prevHand && n > (prevHand[r] || 0)) div.classList.add('bump');
     wrap.appendChild(div);
   }
   prevHand = { ...S.you.hand };
@@ -497,6 +610,10 @@ function renderHand() {
 function renderDevCards() {
   const wrap = $('dev-cards');
   wrap.innerHTML = '';
+  if (S.mode === 'ck') {
+    renderProgressCards(wrap);
+    return;
+  }
   const groups = {};
   for (const c of S.you.devCards) {
     if (c.played) continue;
@@ -532,19 +649,259 @@ function playDevCard(type) {
   }
 }
 
+// ---------- 进步卡（城市与骑士） ----------
+function renderProgressCards(wrap) {
+  const groups = {};
+  for (const c of S.you.progressCards) {
+    const key = c.type;
+    if (!groups[key]) groups[key] = { deck: c.deck, n: 0 };
+    groups[key].n++;
+  }
+  for (const [type, g] of Object.entries(groups)) {
+    const btn = document.createElement('button');
+    btn.className = `dev-card prog-card prog-${g.deck}`;
+    btn.innerHTML = `<small>${PROG_META[type].name}${g.n > 1 ? `×${g.n}` : ''}</small>`;
+    btn.title = PROG_META[type].desc;
+    const st = S.turn.state;
+    const canPlay = isMyTurn() && (type === 'alchemist' ? st === 'preroll' : st === 'main');
+    btn.disabled = !canPlay;
+    btn.onclick = () => playProgressCard(type);
+    wrap.appendChild(btn);
+  }
+}
+
+const sendProg = (card, payload = {}) => send({ type: 'playProgress', card, payload });
+
+function playProgressCard(type) {
+  cancelProgAction();
+  switch (type) {
+    // 直接生效
+    case 'warlord': case 'crane': case 'irrigation': case 'mining':
+    case 'commercialHarbor': case 'wedding': case 'saboteur': case 'roadBuilding':
+      sendProg(type);
+      break;
+    // 选一种牌
+    case 'merchantFleet':
+      openPickModal('商船队：选择 2:1 的牌', cardList().map(cardOption((r) => sendProg(type, { res: r }))));
+      break;
+    case 'resourceMonopoly':
+      openPickModal('资源垄断：选择资源', RES.map(cardOption((r) => sendProg(type, { res: r }))));
+      break;
+    case 'tradeMonopoly':
+      openPickModal('商品垄断：选择商品', COM.map(cardOption((r) => sendProg(type, { res: r }))));
+      break;
+    // 选一名玩家
+    case 'spy': {
+      const opts = S.players.map((p, i) => ({ i, p })).filter(({ i, p }) => i !== myIndex && p.devCount > 0)
+        .map(({ i, p }) => ({ label: `${p.name}（${p.devCount} 张进步卡）`, onPick: () => sendProg(type, { target: i }) }));
+      if (opts.length === 0) return toast('没有持有进步卡的对手');
+      openPickModal('间谍：选择目标', opts);
+      break;
+    }
+    case 'masterMerchant': {
+      const myVp = S.you.vpTotal;
+      const opts = S.players.map((p, i) => ({ i, p })).filter(({ i, p }) => i !== myIndex && p.vp > myVp)
+        .map(({ i, p }) => ({ label: `${p.name}（${p.vp} 分，${p.handCount} 张手牌）`, onPick: () => sendProg(type, { target: i }) }));
+      if (opts.length === 0) return toast('没有分数比你高的玩家');
+      openPickModal('商业大亨：选择目标', opts);
+      break;
+    }
+    // 棋盘交互
+    case 'bishop':
+      startProgAction(type, '主教：点击强盗的新位置');
+      break;
+    case 'merchant':
+      if (!(S.you.hints.merchantHexes || []).length) return toast('没有可放置商人的板块');
+      startProgAction(type, '商人：点击自己建筑相邻的板块');
+      break;
+    case 'inventor':
+      startProgAction(type, '发明家：点击第一块板块（数字 3/4/5/9/10/11）');
+      break;
+    case 'medicine': {
+      const mine = Object.keys(S.buildings).filter((v) => S.buildings[v].player === myIndex && S.buildings[v].type === 'settlement');
+      if (mine.length === 0) return toast('没有可升级的村庄');
+      startProgAction(type, '医学：点击要升级的村庄（2矿 1麦）');
+      break;
+    }
+    case 'engineer':
+      if (!(S.you.hints.wallSpots || []).length) return toast('没有可修城墙的城市');
+      startProgAction(type, '工程师：点击要修城墙的城市');
+      break;
+    case 'diplomat':
+      if (!(S.you.hints.openRoads || []).length) return toast('场上没有开放道路');
+      startProgAction(type, '外交官：点击要移除的开放道路');
+      break;
+    case 'intrigue':
+      if (!(S.you.hints.intrigueKnights || []).length) return toast('你的道路上没有对手骑士');
+      startProgAction(type, '阴谋：点击你道路上的对手骑士');
+      break;
+    case 'deserter':
+      if (!Object.values(S.ck.knights).some((k) => k.player !== myIndex)) return toast('对手没有骑士');
+      if (!(S.you.hints.knightSpots || []).length) return toast('你没有可放骑士的位置');
+      startProgAction(type, '逃兵：点击一名对手的骑士');
+      break;
+    case 'smith': {
+      const upgradable = Object.entries(S.you.hints.myKnights || {}).filter(([, k]) => k.upgrade);
+      if (upgradable.length === 0) return toast('没有可升级的骑士');
+      startProgAction(type, '铁匠：点击 1-2 名自己的骑士，然后确认', { confirm: true });
+      break;
+    }
+    case 'alchemist':
+      openAlchemist();
+      break;
+    default:
+      break;
+  }
+}
+
+// 多步进步卡的客户端状态机：{card, step, data, confirm}
+let progAction = null;
+function startProgAction(card, tip, opts = {}) {
+  progAction = { card, step: 0, data: {}, sel: [], ...opts };
+  $('prog-banner-text').textContent = tip;
+  $('prog-confirm').classList.toggle('hidden', !opts.confirm);
+  $('prog-confirm').disabled = true;
+  $('prog-banner').classList.remove('hidden');
+  renderHotspots();
+}
+function cancelProgAction() {
+  progAction = null;
+  $('prog-banner').classList.add('hidden');
+  if (S) renderHotspots();
+}
+$('prog-cancel').onclick = () => cancelProgAction();
+$('prog-confirm').onclick = () => {
+  if (progAction?.card === 'smith' && progAction.sel.length >= 1) {
+    const vs = [...progAction.sel];
+    cancelProgAction();
+    sendProg('smith', { vertices: vs });
+  }
+};
+
+// 通用选择弹窗（进步卡：选牌 / 选玩家）
+function openPickModal(title, options) {
+  $('pick-modal-title').textContent = title;
+  const box = $('pick-modal-btns');
+  box.innerHTML = '';
+  for (const o of options) {
+    const b = document.createElement('button');
+    b.className = 'btn primary';
+    b.innerHTML = o.label;
+    b.onclick = () => {
+      $('modal-pick').classList.add('hidden');
+      o.onPick();
+    };
+    box.appendChild(b);
+  }
+  $('modal-pick').classList.remove('hidden');
+}
+const cardOption = (fn) => (r) => ({ label: `${resIcon(r)} ${RES_META[r].name}`, onPick: () => fn(r) });
+
+// 炼金术士：两个 1-6 选择器
+let alchSel = [null, null];
+function openAlchemist() {
+  alchSel = [null, null];
+  const box = $('alchemist-picks');
+  box.innerHTML = '';
+  [0, 1].forEach((di) => {
+    const col = document.createElement('div');
+    col.className = 'alch-col';
+    col.innerHTML = `<p class="trade-label small">${di === 0 ? '红骰（决定进步卡）' : '黄骰'}</p>`;
+    const row = document.createElement('div');
+    row.className = 'alch-btns';
+    for (let n = 1; n <= 6; n++) {
+      const b = document.createElement('button');
+      b.className = 'btn small';
+      b.textContent = n;
+      b.onclick = () => {
+        alchSel[di] = n;
+        for (const x of row.children) x.classList.remove('active');
+        b.classList.add('active');
+        $('alchemist-confirm').disabled = alchSel.some((v) => v === null);
+      };
+      row.appendChild(b);
+    }
+    col.appendChild(row);
+    box.appendChild(col);
+  });
+  $('alchemist-confirm').disabled = true;
+  $('modal-alchemist').classList.remove('hidden');
+}
+$('alchemist-confirm').onclick = () => {
+  $('modal-alchemist').classList.add('hidden');
+  sendProg('alchemist', { d1: alchSel[0], d2: alchSel[1] });
+};
+
+// ---------- 城市升级面板 ----------
+function renderImproveModal() {
+  const box = $('improve-tracks');
+  box.innerHTML = '';
+  const my = S.players[myIndex];
+  for (const t of TRACKS) {
+    const meta = TRACK_META[t];
+    const lvl = my.improvements[t];
+    const next = lvl + 1;
+    const com = meta.com;
+    const have = S.you.hand[com];
+    const div = document.createElement('div');
+    div.className = 'improve-track';
+    div.style.borderLeftColor = meta.color;
+    const boxes = Array.from({ length: 5 }, (_, i) => `<span class="imp-box${i < lvl ? ' on' : ''}" style="${i < lvl ? `background:${meta.color}` : ''}"></span>`).join('');
+    const metro = S.ck.metropolis[t];
+    const metroTxt = metro ? `（大都会：${esc(S.players[metro.player].name)}）` : '';
+    div.innerHTML = `
+      <div class="imp-head">
+        <b style="color:${meta.color}">${meta.name}</b>
+        <span class="imp-boxes">${boxes}</span>
+        <span class="imp-metro">${metroTxt}</span>
+      </div>
+      <p class="imp-desc">3 级：${meta.perk3}；4 级：率先达到可获大都会（+2 分）</p>`;
+    const btn = document.createElement('button');
+    btn.className = 'btn primary small';
+    if (lvl >= 5) {
+      btn.textContent = '已满级';
+      btn.disabled = true;
+    } else {
+      btn.innerHTML = `升到 ${next} 级（${next} ${resIcon(com)}${RES_META[com].name}，有 ${have}）`;
+      btn.disabled = !(isMyTurn() && S.turn.state === 'main' && have >= next);
+    }
+    btn.onclick = () => {
+      send({ type: 'buyImprovement', track: t });
+    };
+    div.appendChild(btn);
+    box.appendChild(div);
+  }
+}
+$('btn-improve').onclick = () => {
+  renderImproveModal();
+  $('modal-improve').classList.remove('hidden');
+};
+
 function renderButtons() {
   const my = isMyTurn();
   const main = my && S.turn.state === 'main';
   const hand = S.you.hand;
+  const ckMode = S.mode === 'ck';
   $('btn-roll').disabled = !(my && S.turn.state === 'preroll');
   $('btn-road').disabled = !(main && hand.wood >= 1 && hand.brick >= 1 && (S.you.hints.roads || []).length > 0);
   $('btn-settlement').disabled = !(main && hand.wood >= 1 && hand.brick >= 1 && hand.sheep >= 1 && hand.wheat >= 1 && (S.you.hints.settlements || []).length > 0);
   $('btn-city').disabled = !(main && hand.wheat >= 2 && hand.ore >= 3 && (S.you.hints.cities || []).length > 0);
+  $('btn-buydev').classList.toggle('hidden', ckMode);
   $('btn-buydev').disabled = !(main && hand.sheep >= 1 && hand.wheat >= 1 && hand.ore >= 1 && S.bank.devDeck > 0);
+  $('btn-knight').classList.toggle('hidden', !ckMode);
+  $('btn-wall').classList.toggle('hidden', !ckMode);
+  $('btn-improve').classList.toggle('hidden', !ckMode);
+  if (ckMode) {
+    $('btn-knight').disabled = !(main && hand.sheep >= 1 && hand.ore >= 1 && (S.you.hints.knightSpots || []).length > 0);
+    $('btn-wall').disabled = !(main && hand.brick >= 2 && (S.you.hints.wallSpots || []).length > 0);
+    $('btn-improve').disabled = !main;
+    // 升级面板开着时跟随状态刷新
+    if (!$('modal-improve').classList.contains('hidden')) renderImproveModal();
+  }
   $('btn-trade').disabled = !main;
   $('btn-end').disabled = !main;
 
-  for (const [id, kind] of [['btn-road', 'road'], ['btn-settlement', 'settlement'], ['btn-city', 'city']]) {
+  for (const [id, kind] of [['btn-road', 'road'], ['btn-settlement', 'settlement'], ['btn-city', 'city'], ['btn-knight', 'knight'], ['btn-wall', 'wall']]) {
     $(id).classList.toggle('armed', armed === kind);
   }
 
@@ -559,10 +916,15 @@ const ghostOf = (kind) => ({ kind, color: S.players[myIndex].color });
 function renderHotspots() {
   if (isMySetup()) {
     if (S.setup.awaiting === 'settlement') {
-      showVertexSpots(S.you.hints.settlements || [], (v) => send({ type: 'setupSettlement', vertex: v }), ghostOf('settlement'));
+      showVertexSpots(S.you.hints.settlements || [], (v) => send({ type: 'setupSettlement', vertex: v }), ghostOf(S.setup.building || 'settlement'));
     } else {
       showEdgeSpots(S.you.hints.roads || [], (e) => send({ type: 'setupRoad', edge: e }), ghostOf('road'));
     }
+    return;
+  }
+  // 野蛮人毁城：轮到谁选都要显示（不一定是当前回合玩家）
+  if (S.turn.state === 'barbarianLoss' && (S.you.hints.cityLoss || []).length) {
+    showVertexSpots(S.you.hints.cityLoss, (v) => send({ type: 'chooseCityLoss', vertex: v }));
     return;
   }
   if (isMyTurn()) {
@@ -575,6 +937,10 @@ function renderHotspots() {
       showEdgeSpots(S.you.hints.roads || [], (e) => send({ type: 'buildRoad', edge: e }), ghostOf('road'));
       return;
     }
+    if (st === 'main' && progAction) {
+      renderProgSpots();
+      return;
+    }
     if (st === 'main' && armed) {
       if (armed === 'road') {
         showEdgeSpots(S.you.hints.roads || [], (e) => { armed = null; send({ type: 'buildRoad', edge: e }); }, ghostOf('road'));
@@ -582,6 +948,10 @@ function renderHotspots() {
         showVertexSpots(S.you.hints.settlements || [], (v) => { armed = null; send({ type: 'buildSettlement', vertex: v }); }, ghostOf('settlement'));
       } else if (armed === 'city') {
         showVertexSpots(S.you.hints.cities || [], (v) => { armed = null; send({ type: 'buildCity', vertex: v }); }, ghostOf('city'));
+      } else if (armed === 'knight') {
+        showVertexSpots(S.you.hints.knightSpots || [], (v) => { armed = null; send({ type: 'buildKnight', vertex: v }); });
+      } else if (armed === 'wall') {
+        showVertexSpots(S.you.hints.wallSpots || [], (v) => { armed = null; send({ type: 'buildWall', vertex: v }); });
       }
       return;
     }
@@ -589,8 +959,134 @@ function renderHotspots() {
   clearHotspots();
 }
 
-for (const [id, kind] of [['btn-road', 'road'], ['btn-settlement', 'settlement'], ['btn-city', 'city']]) {
+// 多步进步卡当前步骤的可点目标
+function renderProgSpots() {
+  const pa = progAction;
+  if (!pa) return;
+  switch (pa.card) {
+    case 'bishop':
+      showRobberSpots(S.robber, (h) => { cancelProgAction(); sendProg('bishop', { hex: h }); });
+      break;
+    case 'merchant':
+      showHexSpots(S.you.hints.merchantHexes || [], (h) => { cancelProgAction(); sendProg('merchant', { hex: h }); });
+      break;
+    case 'inventor': {
+      const ok = S.board.hexes.filter((h) => [3, 4, 5, 9, 10, 11].includes(h.number)).map((h) => h.id);
+      if (pa.step === 0) {
+        showHexSpots(ok, (h) => {
+          pa.step = 1;
+          pa.data.h1 = h;
+          $('prog-banner-text').textContent = '发明家：点击第二块板块';
+          showHexSpots(ok.filter((x) => x !== h), (h2) => { cancelProgAction(); sendProg('inventor', { h1: h, h2 }); });
+        });
+      }
+      break;
+    }
+    case 'medicine': {
+      const mine = Object.keys(S.buildings)
+        .filter((v) => S.buildings[v].player === myIndex && S.buildings[v].type === 'settlement')
+        .map(Number);
+      showVertexSpots(mine, (v) => { cancelProgAction(); sendProg('medicine', { vertex: v }); }, ghostOf('city'));
+      break;
+    }
+    case 'engineer':
+      showVertexSpots(S.you.hints.wallSpots || [], (v) => { cancelProgAction(); sendProg('engineer', { vertex: v }); });
+      break;
+    case 'diplomat':
+      showEdgeSpots(S.you.hints.openRoads || [], (e) => { cancelProgAction(); sendProg('diplomat', { edge: e }); });
+      break;
+    case 'deserter':
+      if (pa.step === 1) {
+        showVertexSpots(S.you.hints.knightSpots || [], (v) => {
+          const kv = pa.data.knight;
+          cancelProgAction();
+          sendProg('deserter', { knight: kv, place: v });
+        });
+      } else {
+        clearHotspots(); // 等待点击对手骑士（骑士棋子自带点击）
+      }
+      break;
+    case 'intrigue':
+    case 'smith':
+      clearHotspots(); // 点击骑士棋子完成
+      break;
+    default:
+      clearHotspots();
+  }
+}
+
+// 骑士棋子被点击：优先交给进行中的进步卡流程，否则打开自己骑士的操作菜单
+function onKnightClick(v, k) {
+  if (progAction && isMyTurn()) {
+    const pa = progAction;
+    if (pa.card === 'intrigue' && (S.you.hints.intrigueKnights || []).includes(v)) {
+      cancelProgAction();
+      sendProg('intrigue', { vertex: v });
+      return;
+    }
+    if (pa.card === 'deserter' && pa.step === 0 && k.player !== myIndex) {
+      pa.step = 1;
+      pa.data.knight = v;
+      $('prog-banner-text').textContent = '逃兵：点击你要放置骑士的位置';
+      renderProgSpots();
+      return;
+    }
+    if (pa.card === 'smith' && k.player === myIndex) {
+      const hint = (S.you.hints.myKnights || {})[v];
+      if (!hint?.upgrade) return toast('该骑士本回合不能升级');
+      const i = pa.sel.indexOf(v);
+      if (i >= 0) pa.sel.splice(i, 1);
+      else if (pa.sel.length < 2) pa.sel.push(v);
+      $('prog-banner-text').textContent = `铁匠：已选 ${pa.sel.length} 名骑士（可选 1-2 名）`;
+      $('prog-confirm').disabled = pa.sel.length < 1;
+      return;
+    }
+    return;
+  }
+  if (k.player !== myIndex || !isMyTurn() || S.turn.state !== 'main') return;
+  openKnightMenu(v, k);
+}
+
+// 自己骑士的操作菜单
+function openKnightMenu(v, k) {
+  const hint = (S.you.hints.myKnights || {})[v];
+  if (!hint) return;
+  $('knightmenu-title').textContent = `⚔️ ${k.level} 级骑士（${k.active ? '已激活' : '未激活'}）`;
+  const box = $('knightmenu-btns');
+  box.innerHTML = '';
+  const hand = S.you.hand;
+  const addBtn = (label, enabled, fn, tip = '') => {
+    const b = document.createElement('button');
+    b.className = 'btn primary';
+    b.innerHTML = label;
+    b.disabled = !enabled;
+    if (tip) b.title = tip;
+    b.onclick = () => {
+      $('modal-knightmenu').classList.add('hidden');
+      fn();
+    };
+    box.appendChild(b);
+  };
+  if (hint.activate) {
+    addBtn(`🔥 激活（1 ${resIcon('wheat')}）`, hand.wheat >= 1,
+      () => send({ type: 'activateKnight', vertex: v }));
+  }
+  addBtn(`⬆️ 升级（1 ${resIcon('sheep')} 1 ${resIcon('ore')}）`,
+    hint.upgrade && hand.sheep >= 1 && hand.ore >= 1,
+    () => send({ type: 'upgradeKnight', vertex: v }),
+    hint.upgrade ? '' : '本回合招募/已升级过、等级或政治等级不足时不能升级');
+  const targets = [...(hint.moves || []), ...(hint.displaces || [])];
+  addBtn('🚶 移动', targets.length > 0, () => {
+    showVertexSpots(targets, (to) => send({ type: 'moveKnight', from: v, to }));
+  }, k.active ? '沿自己的道路移动（可驱逐低级敌方骑士）' : '需要先激活，激活当回合不能行动');
+  addBtn('🦹 驱逐强盗', !!hint.chase, () => send({ type: 'chaseRobber', vertex: v }),
+    '骑士需已激活、与强盗相邻，且野蛮人已来袭过');
+  $('modal-knightmenu').classList.remove('hidden');
+}
+
+for (const [id, kind] of [['btn-road', 'road'], ['btn-settlement', 'settlement'], ['btn-city', 'city'], ['btn-knight', 'knight'], ['btn-wall', 'wall']]) {
   $(id).onclick = () => {
+    cancelProgAction();
     armed = armed === kind ? null : kind;
     renderButtons();
     renderHotspots();
@@ -680,11 +1176,11 @@ function emoteBurst(playerIdx, emoji) {
 // ---------- 资源选择器组件 ----------
 function makePickers(container, sel, limits, onChange) {
   container.innerHTML = '';
-  for (const r of RES) {
+  for (const r of cardList()) {
     const div = document.createElement('div');
     div.className = 'res-picker';
     div.innerHTML = `
-      <div class="rp-card res-${r}" title="${RES_META[r].name}"><span class="rp-cnt">${sel[r] || 0}</span></div>
+      <div class="rp-card res-${r}" title="${RES_META[r].name}">${COM.includes(r) ? `<span class="com-ico small">${RES_META[r].icon}</span>` : ''}<span class="rp-cnt">${sel[r] || 0}</span></div>
       <div class="rp-btns">
         <button data-d="-1">−</button>
         <button data-d="1">＋</button>
@@ -715,7 +1211,7 @@ function renderModals() {
     discardSel = {};
     $('discard-need').textContent = needDiscard;
     makePickers($('discard-pickers'), discardSel, S.you.hand, () => {
-      const total = RES.reduce((s, r) => s + (discardSel[r] || 0), 0);
+      const total = cardList().reduce((s, r) => s + (discardSel[r] || 0), 0);
       $('discard-count').textContent = total;
       $('discard-confirm').disabled = total !== needDiscard;
     });
@@ -738,6 +1234,20 @@ function renderModals() {
       b.className = 'btn primary';
       b.textContent = `${S.players[t].name}（${S.players[t].handCount} 张手牌）`;
       b.onclick = () => send({ type: 'steal', target: t });
+      box.appendChild(b);
+    }
+  }
+
+  // 引水渠：任选 1 张资源
+  const aqueduct = S.mode === 'ck' && S.turn.state === 'aqueduct' && S.ck.pendingAqueduct.includes(myIndex);
+  $('modal-aqueduct').classList.toggle('hidden', !aqueduct);
+  if (aqueduct && !$('aqueduct-btns').childElementCount) {
+    const box = $('aqueduct-btns');
+    for (const r of RES) {
+      const b = document.createElement('button');
+      b.className = 'btn primary';
+      b.innerHTML = `${resIcon(r)} ${RES_META[r].name}`;
+      b.onclick = () => send({ type: 'aqueductPick', res: r });
       box.appendChild(b);
     }
   }
@@ -783,9 +1293,10 @@ function renderBankPane() {
   for (const [containerId, isGive] of [['bank-give', true], ['bank-get', false]]) {
     const c = $(containerId);
     c.innerHTML = '';
-    for (const r of RES) {
+    for (const r of cardList()) {
       const b = document.createElement('button');
       b.className = `res-${r}`;
+      if (COM.includes(r)) b.innerHTML = `<span class="com-ico small">${RES_META[r].icon}</span>`;
       b.title = `${RES_META[r].name}${isGive ? `（${S.you.rates[r]}:1）` : ''}`;
       b.onclick = () => {
         if (isGive) bankGiveSel = r; else bankGetSel = r;
@@ -825,7 +1336,7 @@ function renderTradeBanner() {
     return;
   }
   const t = S.trade;
-  const fmt = (m) => RES.filter((r) => m[r]).map((r) => `${m[r]}${resIcon(r)}`).join(' ') || '无';
+  const fmt = (m) => cardList().filter((r) => m[r]).map((r) => `${m[r]}${resIcon(r)}`).join(' ') || '无';
   banner.classList.remove('hidden');
   banner.innerHTML = '';
 
@@ -914,13 +1425,16 @@ let diceAnimUntil = 0;
 let diceRollTimer = null;
 let lastDiceTotal = 0;       // 最近一次掷骰点数：产出飞卡动画据此反查产出地块
 
-function animateDiceRoll(d1, d2) {
+function animateDiceRoll(d1, d2, eventFace = null) {
   const total = d1 + d2;
   lastDiceTotal = total;
   diceAnimUntil = Date.now() + DICE_ROLL_MS;
   $('dice-box').classList.remove('hidden');
   const dies = [$('die1'), $('die2')];
-  for (const d of dies) {
+  const evDie = $('die3');
+  const evFaces = Object.keys(EVENT_FACE);
+  if (eventFace) evDie.classList.remove('hidden');
+  for (const d of (eventFace ? [...dies, evDie] : dies)) {
     d.classList.remove('rolling', 'settle');
     void d.offsetWidth;
     d.classList.add('rolling');
@@ -931,11 +1445,18 @@ function animateDiceRoll(d1, d2) {
     if (Date.now() - t0 < DICE_ROLL_MS) {
       // 翻滚中显示随机骰面
       for (const d of dies) setDie(d, 1 + Math.floor(Math.random() * 6));
+      if (eventFace) setEventDie(evDie, evFaces[Math.floor(Math.random() * evFaces.length)]);
       return;
     }
     clearInterval(diceRollTimer);
     setDie(dies[0], d1);
     setDie(dies[1], d2);
+    if (eventFace) {
+      setEventDie(evDie, eventFace);
+      evDie.classList.remove('rolling');
+      void evDie.offsetWidth;
+      evDie.classList.add('settle');
+    }
     for (const d of dies) {
       d.classList.remove('rolling');
       void d.offsetWidth;
@@ -985,10 +1506,55 @@ function playEvents() {
       case 'turnEnd':
         showTurnBanner(ev.to);
         break;
+      // ---- 城市与骑士 ----
+      case 'barbarian': {
+        const d = delay;
+        setTimeout(() => showBarbarianBanner(ev), d);
+        delay += 1200;
+        break;
+      }
+      case 'pillage':
+        floatOverPlayer(ev.player, '💥 城市被毁');
+        break;
+      case 'progress':
+        floatOverPlayer(ev.player, '🎴 +1');
+        break;
+      case 'progressVP':
+        floatOverPlayer(ev.player, '📜 +1 分');
+        break;
+      case 'defender':
+        floatOverPlayer(ev.player, '🏅 卡坦守护者 +1 分');
+        break;
+      case 'metropolis':
+        floatOverPlayer(ev.player, '🏛️ 大都会');
+        break;
+      case 'playProgress':
+        floatOverPlayer(ev.player, `🎴 ${PROG_META[ev.card]?.name || ''}`);
+        break;
       default:
         break;
     }
   }
+}
+
+// 野蛮人来袭的结果横幅（复用回合横幅样式）
+function showBarbarianBanner(ev) {
+  const banner = $('turn-banner');
+  const inner = banner.querySelector('.turn-banner-inner');
+  inner.textContent = ev.win
+    ? `🛡️ 野蛮人被击退！（防御 ${ev.defense} ≥ 兵力 ${ev.strength}）`
+    : `🔥 野蛮人洗劫卡坦！（防御 ${ev.defense} < 兵力 ${ev.strength}）`;
+  inner.classList.remove('mine');
+  inner.style.background = ev.win
+    ? 'linear-gradient(135deg, #2e8b57e6, #1f6e42b0)'
+    : 'linear-gradient(135deg, #8b2e2ee6, #6e1f1fb0)';
+  inner.style.color = '#fff';
+  inner.style.textShadow = '0 2px 6px rgba(0,0,0,.35)';
+  banner.classList.remove('show');
+  void banner.offsetWidth;
+  banner.classList.add('show');
+  clearTimeout(banner._timer);
+  banner._timer = setTimeout(() => banner.classList.remove('show'), 4600);
 }
 
 function showTurnBanner(to) {

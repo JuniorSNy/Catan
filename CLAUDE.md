@@ -1,12 +1,14 @@
 # 卡坦岛 Online
 
-浏览器多人卡坦岛（基础版）。Node.js + Express + Socket.IO，前端原生 JS + SVG（无构建步骤），界面全中文。
+浏览器多人卡坦岛（基础版 + 城市与骑士扩展）。Node.js + Express + Socket.IO，前端原生 JS + SVG（无构建步骤），界面全中文。
 
 ## 常用命令
 
 - `npm start` — 启动服务器（PORT 环境变量可改端口，默认 3000）
 - `npm test` — 单元测试（node:test）
-- `node test/e2e-smoke.js` — 端到端冒烟测试，需要服务器已在 3000 端口运行
+- `node test/e2e-smoke.js` — 基础版端到端冒烟测试，需要服务器已在 3000 端口运行
+- `node test/e2e-ck.js` — 城市与骑士端到端冒烟测试（同上）
+- `node test/fuzz-ck.js` — 城市与骑士随机对局模糊测试（直接驱动 Game 类，无需服务器）
 
 ## 架构要点
 
@@ -16,6 +18,11 @@
 - **动画**：状态里带 `events` 序列（自增 seq），客户端只播放未见过的事件；棋子出现用 CSS 动画类（`piece-pop` 等）。
 - **规则实现注意**：本回合买的发展卡不能用（`boughtTurn` 判断）；每回合限一张发展卡；骑士可在掷骰前打；银行资源不足且多人应得时该资源全员不发；最长道路被截断且并列时奖励空置。
 
-## 计划
+## 城市与骑士（`mode: 'ck'`）
 
-基础版测试稳定后再加「城市与骑士」扩展。
+- 扩展规则集中在 `server/ck.js`（常量 + 方法，`Object.assign(Game.prototype, ckMethods)` 挂载）；`game.js` 内用 `this.ck` 分支。开局时房主在选颜色界面选模式。
+- 商品（布匹/铸币/纸张）直接存放在 `player.hand` 里（与资源同构），`cardTypes()` 返回本模式全部牌类型——弃牌/偷牌/交易/银行全部自动覆盖商品。
+- 掷骰流程：`roll()` → 事件骰（3/6 船）→ 野蛮人前进/来袭结算 → `finishRoll()`（产出/弃牌/进步卡/引水渠）。来袭需玩家选城时状态进入 `barbarianLoss`，选完续跑 `finishRoll`。
+- 新增回合状态：`aqueduct`（引水渠选资源）、`barbarianLoss`（选被毁城市）。
+- 骑士记录在 `this.knights`（vertexId → {player, level, active, builtTurn, promotedTurn, activatedTurn, actedTurn}）：激活当回合不能行动、每回合限一次行动/一次升级、本回合招募不能升级、三级需政治 3；对手骑士会截断最长道路与修路。
+- 有意的简化（v1）：被驱逐/替换的骑士直接移回补给区；大都会自动放在第一座可用城市；商业港/商业大亨/婚礼/间谍的「对方选牌」改为随机。
