@@ -542,6 +542,9 @@ function renderStatus() {
     $('dice-box').classList.add('hidden');
   }
   $('die3').classList.toggle('hidden', S.mode !== 'ck');
+  // ck：第一颗是红骰（与事件骰城门配合决定进步卡派发）
+  $('die1').classList.toggle('red-die', S.mode === 'ck');
+  $('die1').title = S.mode === 'ck' ? '红骰：掷出城门时决定谁获得进步卡' : '';
 }
 
 function setEventDie(el, face) {
@@ -1433,6 +1436,7 @@ function animateDiceRoll(d1, d2, eventFace = null) {
   const dies = [$('die1'), $('die2')];
   const evDie = $('die3');
   const evFaces = Object.keys(EVENT_FACE);
+  dies[0].classList.toggle('red-die', !!eventFace);
   if (eventFace) evDie.classList.remove('hidden');
   for (const d of (eventFace ? [...dies, evDie] : dies)) {
     d.classList.remove('rolling', 'settle');

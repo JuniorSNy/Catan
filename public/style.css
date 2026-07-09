@@ -659,6 +659,12 @@ body {
 }
 .mode-btn:disabled { opacity: .8; cursor: default; }
 
+/* 红骰（ck）：白色骰面插画整体染红 */
+.die.red-die img {
+  filter: sepia(1) saturate(7) hue-rotate(-48deg) brightness(.92)
+    drop-shadow(0 3px 4px rgba(0,0,0,.35));
+}
+
 /* 事件骰：船 / 三色城门 */
 .die-event {
   border-radius: 8px; font-size: 20px;
