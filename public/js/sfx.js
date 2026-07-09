@@ -39,14 +39,36 @@ function schedule(c, { freq, freq2, type, dur, gain, when }) {
   o.stop(t0 + dur + 0.02);
 }
 
+// 若手势后音频上下文仍未 running，多半是浏览器的自动播放策略在拦（Safari：设置→网站→自动播放）
+let blockWarned = false;
+function checkBlocked() {
+  if (blockWarned) return;
+  setTimeout(() => {
+    if (blockWarned || !ctx || ctx.state === 'running') return;
+    blockWarned = true;
+    console.warn(`[sfx] AudioContext 卡在 ${ctx.state}：浏览器阻止了网页发声`);
+    const tip = document.createElement('div');
+    tip.textContent = '🔇 浏览器阻止了音效播放：请在 Safari「设置 → 网站 → 自动播放」里把本站设为「允许所有自动播放」';
+    tip.style.cssText = 'position:fixed;top:10px;left:50%;transform:translateX(-50%);'
+      + 'background:rgba(30,30,30,.92);color:#fff;padding:10px 18px;border-radius:10px;'
+      + 'font-size:13px;z-index:99;max-width:90vw;';
+    document.body.appendChild(tip);
+    setTimeout(() => tip.remove(), 9000);
+  }, 1200);
+}
+
 // 单个短音：freq 起始频率，freq2 结束频率（滑音），dur 秒，gain 音量，when 延迟秒
 function tone(opts) {
   const c = ac();
   if (!c) return;
   const full = { freq: 600, freq2: 0, type: 'sine', dur: 0.08, gain: 0.1, when: 0, ...opts };
   unlock(c);
-  if (c.state === 'running') schedule(c, full);
-  else c.resume().then(() => schedule(c, full)).catch(() => {});
+  if (c.state === 'running') {
+    schedule(c, full);
+  } else {
+    c.resume().then(() => schedule(c, full)).catch(() => {});
+    checkBlocked();
+  }
 }
 
 export const sfx = {
