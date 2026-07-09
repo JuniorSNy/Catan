@@ -235,6 +235,17 @@ test('10 分获胜', () => {
   assert.equal(g.winner, 0);
 });
 
+test('日志条目带自增 seq：窗口滑动后客户端仍可增量渲染', () => {
+  const g = newGame(3);
+  for (let i = 0; i < 200; i++) g.addLog(`消息${i}`);
+  const log = g.publicState().log;
+  assert.equal(log.length, 60);
+  assert.equal(typeof log[0].text, 'string');
+  for (let i = 1; i < log.length; i++) {
+    assert.equal(log[i].seq, log[i - 1].seq + 1);
+  }
+});
+
 test('掷出 7：超过 7 张手牌需要弃一半', () => {
   const g = newGame(3);
   doSetup(g);

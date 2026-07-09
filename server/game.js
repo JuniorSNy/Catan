@@ -50,20 +50,22 @@ export class Game {
     this.turn = {
       player: 0, count: 1, rolled: false, dice: null,
       devPlayed: false, state: 'setup', freeRoads: 0,
-      pendingDiscards: {}, stealTargets: [], returnState: 'main',
+      pendingDiscards: {}, stealTargets: [],
     };
     this.trade = null;
     this.awards = { longestRoad: null, largestArmy: null };
     this.winner = null;
     this.log = [];
+    this.logSeq = 0;
     this.events = [];
     this.eventSeq = 0;
     this.addLog(`游戏开始！${this.players[this.setup.order[0]].name} 先放置。`);
   }
 
   // ---------- 工具 ----------
+  // 日志带自增 seq：客户端按 seq 增量渲染（发送窗口只有最近 60 条，不能按下标对齐）
   addLog(msg) {
-    this.log.push(msg);
+    this.log.push({ seq: ++this.logSeq, text: msg });
     if (this.log.length > 120) this.log.shift();
   }
 
@@ -225,7 +227,6 @@ export class Game {
         if (c > 7) pending[i] = Math.floor(c / 2);
       });
       this.turn.pendingDiscards = pending;
-      this.turn.returnState = 'main';
       if (Object.keys(pending).length > 0) {
         this.turn.state = 'discard';
         const names = Object.keys(pending).map((i) => this.players[i].name).join('、');
@@ -242,16 +243,14 @@ export class Game {
   }
 
   distribute(total) {
-    // 统计每位玩家每种资源应得数量
+    // 统计每位玩家每种资源应得数量（沿有建筑的顶点查其相邻板块）
     const demand = this.players.map(() => emptyHand());
-    for (const hex of this.board.hexes) {
-      if (hex.number !== total || hex.id === this.robber) continue;
-      const res = TERRAIN_RESOURCE[hex.terrain];
-      if (!res) continue;
-      for (const v of this.board.vertices) {
-        if (!v.hexes.includes(hex.id)) continue;
-        const b = this.buildings[v.id];
-        if (b) demand[b.player][res] += b.type === 'city' ? 2 : 1;
+    for (const [vid, b] of Object.entries(this.buildings)) {
+      for (const hid of this.board.vertices[vid].hexes) {
+        const hex = this.board.hexes[hid];
+        if (hex.number !== total || hid === this.robber) continue;
+        const res = TERRAIN_RESOURCE[hex.terrain];
+        if (res) demand[b.player][res] += b.type === 'city' ? 2 : 1;
       }
     }
     // 银行不足：若多名玩家需要该资源则都不发，仅一名则发剩余
@@ -274,6 +273,11 @@ export class Game {
   }
 
   // ---------- 强盗 ----------
+  // 强盗流程结束后回到哪：骑士卡可在掷骰前打，此时要回到 preroll
+  afterRobberState() {
+    return this.turn.rolled ? 'main' : 'preroll';
+  }
+
   discard(p, sel) {
     this.requireState('discard');
     const need = this.turn.pendingDiscards[p];
@@ -314,10 +318,10 @@ export class Game {
     }
     const list = [...targets];
     if (list.length === 0) {
-      this.turn.state = this.turn.rolled ? 'main' : 'preroll';
+      this.turn.state = this.afterRobberState();
     } else if (list.length === 1) {
       this.stealFrom(p, list[0]);
-      this.turn.state = this.turn.rolled ? 'main' : 'preroll';
+      this.turn.state = this.afterRobberState();
     } else {
       this.turn.stealTargets = list;
       this.turn.state = 'steal';
@@ -330,7 +334,7 @@ export class Game {
     if (!this.turn.stealTargets.includes(target)) this.err('不能偷取该玩家');
     this.stealFrom(p, target);
     this.turn.stealTargets = [];
-    this.turn.state = this.turn.rolled ? 'main' : 'preroll';
+    this.turn.state = this.afterRobberState();
   }
 
   stealFrom(p, target) {
@@ -440,7 +444,6 @@ export class Game {
         this.players[p].knightsPlayed++;
         this.addLog(`${this.players[p].name} 打出了骑士！`);
         this.updateLargestArmy();
-        this.turn.returnState = this.turn.rolled ? 'main' : 'preroll';
         this.turn.state = 'robber';
         this.checkWin();
         break;
@@ -674,9 +677,7 @@ export class Game {
         rolled: this.turn.rolled,
         dice: this.turn.dice,
         freeRoads: this.turn.freeRoads,
-        pendingDiscards: Object.fromEntries(
-          Object.entries(this.turn.pendingDiscards).map(([i, n]) => [i, n]),
-        ),
+        pendingDiscards: { ...this.turn.pendingDiscards },
         stealTargets: this.turn.stealTargets,
       },
       setup: this.phase === 'setup' ? {

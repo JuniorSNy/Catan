@@ -28,6 +28,13 @@ function makeCode() {
   return code;
 }
 
+// 给房间内所有在线玩家发同一份数据；perPlayer 提供时按玩家下标生成各自的负载
+function roomEmit(room, event, data, perPlayer = null) {
+  room.players.forEach((p, i) => {
+    if (p.socketId) io.to(p.socketId).emit(event, perPlayer ? perPlayer(i) : data);
+  });
+}
+
 function roomLobbyState(room) {
   return {
     code: room.code,
@@ -41,21 +48,17 @@ function roomLobbyState(room) {
   };
 }
 
+// 带上 you（接收者自己的下标）：有人退出后下标会移动，客户端不能沿用旧值
 function broadcastLobby(room) {
-  for (const p of room.players) {
-    if (p.socketId) io.to(p.socketId).emit('lobby', roomLobbyState(room));
-  }
+  const st = roomLobbyState(room);
+  roomEmit(room, 'lobby', null, (i) => ({ ...st, you: i }));
 }
 
 function broadcastGame(room) {
   if (!room.game) return;
   const pub = room.game.publicState();
   const hostIndex = room.players.findIndex((p) => p.token === room.hostToken);
-  room.players.forEach((p, i) => {
-    if (p.socketId) {
-      io.to(p.socketId).emit('state', { ...pub, hostIndex, you: room.game.privateState(i) });
-    }
-  });
+  roomEmit(room, 'state', null, (i) => ({ ...pub, hostIndex, you: room.game.privateState(i) }));
 }
 
 // 选颜色阶段的状态快照，发给房间内所有人
@@ -76,9 +79,7 @@ function pickingState(room) {
 function broadcastPicking(room) {
   if (!room.picking) return;
   const st = pickingState(room);
-  room.players.forEach((p, i) => {
-    if (p.socketId) io.to(p.socketId).emit('picking', { ...st, you: i });
-  });
+  roomEmit(room, 'picking', null, (i) => ({ ...st, you: i }));
 }
 
 // 公开的「正在等待玩家」的房间：未开始、未满、且至少有一名在线玩家
@@ -240,9 +241,7 @@ io.on('connection', (socket) => {
     if (!room || !room.picking) return;
     if (room.hostToken !== myToken) return fail('只有房主可以取消');
     room.picking = null;
-    for (const p of room.players) {
-      if (p.socketId) io.to(p.socketId).emit('pickingCancelled');
-    }
+    roomEmit(room, 'pickingCancelled');
     broadcastLobby(room);
     broadcastOpenRooms();
   });
@@ -278,9 +277,7 @@ io.on('connection', (socket) => {
     if (room.hostToken !== myToken) return fail('只有房主可以结束本局');
     if (!room.game) return fail('游戏尚未开始');
     room.game = null;
-    for (const p of room.players) {
-      if (p.socketId) io.to(p.socketId).emit('returnToLobby');
-    }
+    roomEmit(room, 'returnToLobby');
     broadcastLobby(room);
     broadcastOpenRooms();
   });
@@ -308,9 +305,7 @@ io.on('connection', (socket) => {
     if (!room) return fail('尚未加入房间');
     if (room.hostToken !== myToken) return fail('只有房主可以销毁房间');
     rooms.delete(room.code);
-    for (const p of room.players) {
-      if (p.socketId) io.to(p.socketId).emit('roomDestroyed');
-    }
+    roomEmit(room, 'roomDestroyed');
     // 清空残留引用：其他成员的连接仍握着此 room，防止销毁后继续收发
     room.players = [];
     room.game = null;
@@ -363,9 +358,7 @@ io.on('connection', (socket) => {
     const p = room.players.find((pl) => pl.token === myToken);
     text = String(text || '').trim().slice(0, 200);
     if (!p || !text) return;
-    for (const pl of room.players) {
-      if (pl.socketId) io.to(pl.socketId).emit('chat', { name: p.name, text });
-    }
+    roomEmit(room, 'chat', { name: p.name, text });
   });
 
   socket.on('emote', ({ emoji }) => {
@@ -378,9 +371,7 @@ io.on('connection', (socket) => {
     const now = Date.now();
     if (now - (p.lastEmote || 0) < 1000) return;
     p.lastEmote = now;
-    for (const pl of room.players) {
-      if (pl.socketId) io.to(pl.socketId).emit('emote', { index: idx, name: p.name, emoji });
-    }
+    roomEmit(room, 'emote', { index: idx, name: p.name, emoji });
   });
 
   socket.on('disconnect', () => {

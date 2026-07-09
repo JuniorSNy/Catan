@@ -222,17 +222,17 @@ socket.on('joined', ({ code, token, index }) => {
 
 socket.on('lobby', (lobby) => {
   myRoomCode = lobby.code;
+  myIndex = lobby.you; // 有人退出后下标会移动（如房主移交），以服务端下发的为准
   $('lobby-code').textContent = lobby.code;
   const ul = $('lobby-players');
   ul.innerHTML = '';
-  let iAmHost = false;
   lobby.players.forEach((p) => {
     const li = document.createElement('li');
     li.innerHTML = `<span>${esc(p.name)}${p.isHost ? ' 👑' : ''}</span>
       <span>${p.connected ? '🟢 在线' : '🔴 离线'}</span>`;
     ul.appendChild(li);
-    if (p.isHost && p.index === myIndex) iAmHost = true;
   });
+  const iAmHost = !!lobby.players[lobby.you]?.isHost;
   $('btn-start').classList.toggle('hidden', !iAmHost || lobby.started);
   $('btn-destroy').classList.toggle('hidden', !iAmHost || lobby.started);
   $('btn-leave').classList.toggle('hidden', iAmHost || lobby.started);
@@ -380,6 +380,8 @@ function applyState() {
 socket.on('returnToLobby', () => {
   boardReady = false;   // 下一局需重新 initBoard
   lastSeq = 0;
+  lastLogSeq = 0;
+  $('log-list').innerHTML = '';
   S = null;
   prevHand = null;
   armed = null;
@@ -607,13 +609,17 @@ $('endgame-confirm').onclick = () => { $('modal-endgame').classList.add('hidden'
 $('btn-again').onclick = () => socket.emit('endGame');
 
 // ---------- 日志 ----------
-let logRendered = 0;
+// 按服务端的日志 seq 增量渲染（发送的是最近 60 条的滑动窗口，不能按数组下标对齐）
+let lastLogSeq = 0;
 function renderLog() {
-  const list = $('log-list');
-  if (S.log.length < logRendered) { list.innerHTML = ''; logRendered = 0; }
-  for (let i = logRendered; i < S.log.length; i++) appendLog(esc(S.log[i]), false);
-  logRendered = S.log.length;
-  list.scrollTop = list.scrollHeight;
+  let appended = false;
+  for (const entry of S.log) {
+    if (entry.seq <= lastLogSeq) continue;
+    lastLogSeq = entry.seq;
+    appendLog(esc(entry.text), false);
+    appended = true;
+  }
+  if (appended) $('log-list').scrollTop = $('log-list').scrollHeight;
 }
 
 function appendLog(html, scroll) {

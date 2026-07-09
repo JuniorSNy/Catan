@@ -399,7 +399,11 @@ export function updatePieces(state, colors) {
 // ---------- 热点交互 ----------
 export function clearHotspots() {
   layers.hotspots.innerHTML = '';
-  for (const p of layers.hexes.querySelectorAll('.hex')) p.classList.remove('robber-target');
+  // 强盗阶段挂在地块上的 onclick 也要清掉，否则之后点地块会发出非法的 moveRobber
+  for (const p of layers.hexes.querySelectorAll('.hex')) {
+    p.classList.remove('robber-target');
+    p.onclick = null;
+  }
 }
 
 // ghost = { kind: 'settlement' | 'city', color }：悬停热点时显示半透明的预览棋子
@@ -450,11 +454,8 @@ export function showRobberSpots(currentRobber, onClick) {
     if (hid === currentRobber) continue;
     p.classList.add('robber-target');
     p.onclick = () => {
+      clearHotspots();
       onClick(hid);
-      for (const q of layers.hexes.querySelectorAll('.hex')) {
-        q.classList.remove('robber-target');
-        q.onclick = null;
-      }
     };
   }
 }
