@@ -856,7 +856,8 @@ function floatOverPlayer(playerIdx, text) {
   f.className = 'floater';
   f.textContent = text;
   f.style.left = `${rect.left - 60 + Math.random() * 30}px`;
-  f.style.top = `${rect.top + 8}px`;
+  // 垂直锚定在卡片中线，配合较小的上飘幅度，保证全程贴着自己的卡片
+  f.style.top = `${rect.top + rect.height / 2 - 4}px`;
   document.body.appendChild(f);
   setTimeout(() => f.remove(), 5000);
 }

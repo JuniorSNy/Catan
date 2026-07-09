@@ -386,11 +386,12 @@ body {
   text-shadow: 0 2px 5px rgba(0,0,0,.5); white-space: nowrap;
   animation: float-up 4.8s ease forwards;
 }
+/* 上飘幅度要小：飘字锚定在玩家卡片旁，飘太高会跑到上一张卡片旁边 */
 @keyframes float-up {
-  0% { opacity: 0; transform: translateY(10px) scale(.8); }
+  0% { opacity: 0; transform: translateY(8px) scale(.8); }
   12% { opacity: 1; transform: translateY(0) scale(1.08); }
-  78% { opacity: 1; }
-  100% { opacity: 0; transform: translateY(-52px) scale(1); }
+  78% { opacity: 1; transform: translateY(-10px); }
+  100% { opacity: 0; transform: translateY(-16px) scale(1); }
 }
 
 @keyframes pop-in { from { transform: scale(.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
