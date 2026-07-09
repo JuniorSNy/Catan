@@ -659,13 +659,8 @@ body {
 }
 .mode-btn:disabled { opacity: .8; cursor: default; }
 
-/* 红骰（ck）：白色骰面插画整体染红（-webkit- 前缀兼容旧 Safari） */
-.die.red-die img {
-  -webkit-filter: sepia(1) saturate(7) hue-rotate(-48deg) brightness(.92)
-    drop-shadow(0 3px 4px rgba(0,0,0,.35));
-  filter: sepia(1) saturate(7) hue-rotate(-48deg) brightness(.92)
-    drop-shadow(0 3px 4px rgba(0,0,0,.35));
-}
+/* 红骰（ck）：骰面图由 main.js 用 canvas 预染色（勿用 CSS 滤镜——Safari 渲染不稳定，
+   且会与已染色的图叠加双重着色） */
 
 /* 事件骰：船 / 三色城门 */
 .die-event {

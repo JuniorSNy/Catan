@@ -30,8 +30,29 @@ const cardList = () => (S && S.mode === 'ck' ? [...RES, ...COM] : RES);
 const resIcon = (r) => (COM.includes(r)
   ? `<span class="res-ico-emoji" title="${RES_META[r].name}">${RES_META[r].icon}</span>`
   : `<img class="res-ico" src="/assets/opt/icon-${r}.webp" alt="${RES_META[r].name}">`);
-// 骰面插画
-const setDie = (el, n) => { el.innerHTML = `<img src="/assets/opt/die-${n}.webp" alt="${n}">`; };
+// 骰面插画；红骰（ck）用 canvas 预染色的副本 —— Safari 对 img 的 CSS 滤镜链渲染不稳定
+const redDieSrc = {};
+for (let n = 1; n <= 6; n++) {
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement('canvas');
+    c.width = img.naturalWidth;
+    c.height = img.naturalHeight;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    ctx.globalCompositeOperation = 'multiply'; // 白色骰身→红，深色点数保持深色
+    ctx.fillStyle = '#e0574a';
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.globalCompositeOperation = 'destination-in'; // 恢复原图的透明区域
+    ctx.drawImage(img, 0, 0);
+    redDieSrc[n] = c.toDataURL('image/png');
+  };
+  img.src = `/assets/opt/die-${n}.webp`;
+}
+const setDie = (el, n) => {
+  const red = el.classList.contains('red-die') && redDieSrc[n];
+  el.innerHTML = `<img src="${red || `/assets/opt/die-${n}.webp`}" alt="${n}">`;
+};
 const DEV_META = {
   knight: { icon: '⚔️', name: '骑士' },
   vp: { icon: '🏆', name: '分数' },
@@ -530,6 +551,9 @@ function renderStatus() {
   }
   $('status-text').textContent = text;
 
+  // ck：第一颗是红骰（与事件骰城门配合决定进步卡派发）；setDie 依赖该类，需先设置
+  $('die1').classList.toggle('red-die', S.mode === 'ck');
+  $('die1').title = S.mode === 'ck' ? '红骰：掷出城门时决定谁获得进步卡' : '';
   if (S.turn.dice) {
     $('dice-box').classList.remove('hidden');
     // 骰子动画播放期间不提前显示最终点数
@@ -542,9 +566,6 @@ function renderStatus() {
     $('dice-box').classList.add('hidden');
   }
   $('die3').classList.toggle('hidden', S.mode !== 'ck');
-  // ck：第一颗是红骰（与事件骰城门配合决定进步卡派发）
-  $('die1').classList.toggle('red-die', S.mode === 'ck');
-  $('die1').title = S.mode === 'ck' ? '红骰：掷出城门时决定谁获得进步卡' : '';
 }
 
 function setEventDie(el, face) {
