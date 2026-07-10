@@ -1,6 +1,4 @@
 // 「城市与骑士」扩展：常量 + Game 原型方法（由 game.js 挂载）
-// 简化说明：
-// - 逃兵替换的骑士直接移回补给区（官方由受害者选择哪个骑士叛逃）抽取
 import { RESOURCES, TERRAIN_RESOURCE } from './constants.js';
 import { shuffle } from './board.js';
 
