@@ -529,7 +529,7 @@ export const ckMethods = {
     const type = deck.pop();
     if (PROGRESS_VP_CARDS.includes(type)) {
       pl.progressVP++;
-      this.addEvent('progressVP', { player: p, card: type });
+      this.addEvent('progressVP', { player: p, card: type, deck: deckName });
       this.addLog(`📜 ${pl.name} 抽到「${PROGRESS_NAME[type]}」，立即亮出（+1 分）！`);
       return;
     }
@@ -670,8 +670,9 @@ export const ckMethods = {
     if (idx < 0) this.err('你没有这张进步卡');
     // 各分支先完成校验再调用 spend()，保证失败时卡不丢
     const spend = () => {
-      pl.progressCards.splice(idx, 1);
-      this.addEvent('playProgress', { player: p, card: type });
+      const [card] = pl.progressCards.splice(idx, 1);
+      this.progressDecks[card.deck].unshift(card.type); // 用掉的卡放回牌堆底部
+      this.addEvent('playProgress', { player: p, card: type, deck: card.deck });
       this.addLog(`${pl.name} 打出进步卡「${PROGRESS_NAME[type]}」`);
     };
 

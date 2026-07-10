@@ -603,3 +603,15 @@ test('ck：防御并列第一时各自选颜色抽进步卡', () => {
   assert.equal(g.turn.state, 'main'); // 全部选完，掷骰结算继续
   assert.equal(g.turn.pendingDefenderPick.length, 0);
 });
+
+test('ck：用掉的进步卡放回牌堆底部', () => {
+  const g = newCK(3);
+  doSetup(g);
+  forceMain(g);
+  g.players[0].progressCards.push({ type: 'merchantFleet', deck: 'trade' });
+  const len = g.progressDecks.trade.length;
+  g.playProgress(0, 'merchantFleet', { res: 'wood' });
+  assert.equal(g.players[0].progressCards.length, 0);
+  assert.equal(g.progressDecks.trade.length, len + 1);
+  assert.equal(g.progressDecks.trade[0], 'merchantFleet'); // 抽牌从末端 pop，index 0 即牌堆底
+});

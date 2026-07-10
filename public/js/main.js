@@ -3,7 +3,7 @@ import {
   initBoard, updatePieces, updateCKPieces, clearHotspots,
   showVertexSpots, showEdgeSpots, showRobberSpots, showHexSpots,
   zoomAt, resetZoom, highlightProducingHexes, hexPixelPosition,
-  updateBarbarianTrack,
+  updateBarbarianTrack, updateProgressDecks, deckPixelPosition,
 } from './render.js';
 import { initSfx } from './sfx.js';
 import { initSound } from './sound.js';
@@ -503,12 +503,14 @@ function renderAll() {
 function renderBarbBar() {
   if (S.mode !== 'ck' || S.phase === 'setup') {
     updateBarbarianTrack(null);
+    updateProgressDecks(null);
     return;
   }
   const strength = Object.values(S.buildings).filter((b) => b.type === 'city').length;
   const defense = Object.values(S.ck.knights).filter((k) => k.active)
     .reduce((s, k) => s + k.level, 0);
   updateBarbarianTrack(S.ck, strength, defense);
+  updateProgressDecks(S.ck.decks);
 }
 
 function renderStatus() {
@@ -1648,12 +1650,25 @@ function playEvents() {
       case 'pillage':
         floatOverPlayer(ev.player, '💥 城市被毁');
         break;
-      case 'progress':
-        floatOverPlayer(ev.player, '🎴 +1');
+      case 'progress': {
+        const d = delay;
+        const { player, deck } = ev;
+        setTimeout(() => {
+          if (!flyProgressCard(deck, player)) floatOverPlayer(player, '🎴 +1');
+        }, d);
+        delay += 250;
         break;
-      case 'progressVP':
-        floatOverPlayer(ev.player, '📜 +1 分');
+      }
+      case 'progressVP': {
+        const d = delay;
+        const { player, deck } = ev;
+        setTimeout(() => {
+          flyProgressCard(deck, player);
+          floatOverPlayer(player, '📜 +1 分');
+        }, d);
+        delay += 250;
         break;
+      }
       case 'defender':
         floatOverPlayer(ev.player, '🏅 卡坦守护者 +1 分');
         break;
@@ -1661,6 +1676,7 @@ function playEvents() {
         floatOverPlayer(ev.player, '🏛️ 大都会');
         break;
       case 'playProgress':
+        flyProgressCard(ev.deck, ev.player, true); // 用掉的卡飞回牌堆底部
         floatOverPlayer(ev.player, `🎴 ${PROG_META[ev.card]?.name || ''}`);
         break;
       default:
@@ -1755,6 +1771,31 @@ function flyResourceFromHex(res, n) {
       }
     };
   }
+  return true;
+}
+
+// 进步卡飞行动画：从棋盘上的牌堆飞向玩家面板（reverse 表示打出后飞回牌堆底）
+function flyProgressCard(deck, playerIdx, reverse = false) {
+  const meta = TRACK_META[deck];
+  const deckPos = deckPixelPosition(deck, $('board'));
+  const panel = $(`player-card-${playerIdx}`);
+  if (!meta || !deckPos || !panel) return false;
+  const r = panel.getBoundingClientRect();
+  const panelPos = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  const [from, to] = reverse ? [panelPos, deckPos] : [deckPos, panelPos];
+  const f = document.createElement('div');
+  f.className = 'fly-card';
+  f.style.background = meta.color;
+  f.textContent = RES_META[meta.com].icon;
+  f.style.left = `${from.x}px`;
+  f.style.top = `${from.y}px`;
+  document.body.appendChild(f);
+  const anim = f.animate([
+    { transform: 'translate(-50%,-50%) scale(.5) rotate(-8deg)', opacity: 0 },
+    { transform: 'translate(-50%,-50%) scale(1.15) rotate(0deg)', opacity: 1, offset: 0.25 },
+    { transform: `translate(calc(${to.x - from.x}px - 50%), calc(${to.y - from.y}px - 50%)) scale(.55) rotate(10deg)`, opacity: .85 },
+  ], { duration: 950, easing: 'cubic-bezier(.45,.05,.55,.95)' });
+  anim.onfinish = () => f.remove();
   return true;
 }
 

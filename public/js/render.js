@@ -17,6 +17,7 @@ const buildingEls = new Map(); // vertexId -> {el, type}
 let robberEl = null;
 let isle = null;     // 岛屿几何 {cx, cy, hexR}，野蛮人航道定位用
 let barbEls = null;  // 野蛮人航道的持久元素（船用 transform 过渡动画，不能每次重建）
+let deckEls = null;  // 进步卡牌堆的持久元素 {pos, count, prev}（计数变化时播放 bump 动画）
 
 // ---------- 缩放与平移 ----------
 const MAX_ZOOM = 4;
@@ -244,10 +245,11 @@ export function initBoard(svgElement, boardData) {
   buildDefs();
   vpG = el('g', { id: 'viewport' }, svg);
   applyVB();
-  for (const name of ['island', 'barb', 'hexes', 'harbors', 'roads', 'walls', 'buildings', 'knights', 'marks', 'robber', 'hotspots']) {
+  for (const name of ['island', 'barb', 'decks', 'hexes', 'harbors', 'roads', 'walls', 'buildings', 'knights', 'marks', 'robber', 'hotspots']) {
     layers[name] = el('g', { id: `layer-${name}` }, vpG);
   }
   barbEls = null;
+  deckEls = null;
 
   // 岛屿底座：不规则浅滩 + 沙滩海岸线（blob 形状确定性生成），外围点缀漂浮的浪花
   const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
@@ -505,6 +507,83 @@ export function updateBarbarianTrack(ck, strength, defense) {
   const s = barbEls.pt(pos / track);
   barbEls.ship.style.transform = `translate(${s.x}px, ${s.y}px)`;
   barbEls.vs.textContent = `🏰${strength} vs ⚔️${defense}`;
+}
+
+// ---------- 进步卡牌堆（画在棋盘左上角海面上，随棋盘缩放平移） ----------
+const DECK_META = {
+  trade: { name: '贸易', icon: '🧶', color: '#c9a227' },
+  politics: { name: '政治', icon: '🪙', color: '#3a6ea5' },
+  science: { name: '科学', icon: '📜', color: '#4a8c4a' },
+};
+
+// decks = { trade: n, politics: n, science: n }；传 null 时清除（基础版/初始放置阶段）
+export function updateProgressDecks(decks) {
+  const layer = layers.decks;
+  if (!layer) return;
+  if (!decks) {
+    layer.innerHTML = '';
+    deckEls = null;
+    return;
+  }
+  if (!deckEls) {
+    layer.innerHTML = '';
+    // 左上角外海竖排三摞（野蛮人航道占了东侧，这里与之相对）
+    const x0 = baseVB.x + 0.62;
+    const y0 = baseVB.y + 0.78;
+    deckEls = { pos: {}, count: {}, card: {}, prev: {} };
+    Object.entries(DECK_META).forEach(([track, meta], i) => {
+      const x = x0;
+      const y = y0 + i * 1.0;
+      deckEls.pos[track] = { x, y };
+      const g = el('g', { class: 'pdeck' }, layer);
+      // 两张错位垫底的“牌背”营造一摞的效果
+      el('rect', {
+        x: x - 0.24, y: y - 0.32, width: 0.48, height: 0.64, rx: 0.06,
+        class: 'pdeck-back', fill: meta.color, transform: `rotate(-7 ${x} ${y})`,
+      }, g);
+      el('rect', {
+        x: x - 0.24, y: y - 0.32, width: 0.48, height: 0.64, rx: 0.06,
+        class: 'pdeck-back', fill: meta.color, transform: `rotate(4 ${x} ${y})`,
+      }, g);
+      const card = el('g', { class: 'pdeck-top' }, g);
+      el('rect', {
+        x: x - 0.24, y: y - 0.32, width: 0.48, height: 0.64, rx: 0.06,
+        class: 'pdeck-card', fill: meta.color,
+      }, card);
+      el('rect', {
+        x: x - 0.185, y: y - 0.265, width: 0.37, height: 0.53, rx: 0.04,
+        class: 'pdeck-inner',
+      }, card);
+      const ico = el('text', { x, y: y - 0.03, class: 'pdeck-ico' }, card);
+      ico.textContent = meta.icon;
+      const cnt = el('text', { x, y: y + 0.215, class: 'pdeck-count' }, card);
+      const title = el('title', {}, g);
+      title.textContent = `${meta.name}进步卡牌堆`;
+      deckEls.count[track] = cnt;
+      deckEls.card[track] = card;
+    });
+  }
+  for (const track of Object.keys(DECK_META)) {
+    const n = decks[track] ?? 0;
+    deckEls.count[track].textContent = `×${n}`;
+    if (deckEls.prev[track] !== undefined && deckEls.prev[track] !== n) {
+      const card = deckEls.card[track];
+      card.classList.remove('bump');
+      void card.getBoundingClientRect(); // 强制重算，重启动画
+      card.classList.add('bump');
+    }
+    deckEls.prev[track] = n;
+  }
+}
+
+// 牌堆的屏幕坐标（抽牌/回牌飞行动画的起终点）
+export function deckPixelPosition(track, svgElement) {
+  if (!deckEls?.pos[track]) return null;
+  const pt = svgElement.createSVGPoint();
+  pt.x = deckEls.pos[track].x;
+  pt.y = deckEls.pos[track].y;
+  const ctm = layers.decks?.getScreenCTM();
+  return ctm ? pt.matrixTransform(ctm) : null;
 }
 
 // ---------- 热点交互 ----------
