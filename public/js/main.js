@@ -87,6 +87,9 @@ const PROG_META = {
   mining: { name: '采矿', desc: '每块与你建筑相邻的矿山给你 2 张矿石' },
   roadBuilding: { name: '修路', desc: '免费修 2 条路' },
   smith: { name: '铁匠', desc: '免费升级 2 名骑士各一级' },
+  // 分数进步卡：抽到立即亮出（不进手牌，经 vpCards 显示在拥有者界面）
+  constitution: { name: '宪法', desc: '分数卡：抽到立即亮出，+1 分' },
+  printer: { name: '印刷机', desc: '分数卡：抽到立即亮出，+1 分' },
 };
 const TRACKS = ['trade', 'politics', 'science'];
 const TRACK_META = {

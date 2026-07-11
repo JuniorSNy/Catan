@@ -665,3 +665,15 @@ test('ck：逃兵出牌者无可用棋子时受害者仍失去骑士', () => {
   assert.equal(g.knights[v1], undefined); // 受害者照样失去
   assert.equal(g.turn.state, 'main');     // 出牌者拿不到，直接回到 main
 });
+
+test('ck：客户端 PROG_META 覆盖全部进步卡类型（含分数卡）', async () => {
+  const fs = await import('node:fs');
+  const { PROGRESS_NAME } = await import('../server/ck.js');
+  const src = fs.readFileSync(new URL('../public/js/main.js', import.meta.url), 'utf8');
+  const m = src.match(/const PROG_META = \{([\s\S]*?)\n\};/);
+  assert.ok(m, '找不到 PROG_META 定义');
+  const clientTypes = new Set([...m[1].matchAll(/^\s*(\w+):/gm)].map((x) => x[1]));
+  for (const type of Object.keys(PROGRESS_NAME)) {
+    assert.ok(clientTypes.has(type), `客户端 PROG_META 缺少 ${type}（${PROGRESS_NAME[type]}）`);
+  }
+});
