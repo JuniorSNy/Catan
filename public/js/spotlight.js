@@ -74,7 +74,7 @@ function show(item) {
           <span class="sp-side ally">⚔️ 防御 <b>${item.defense}</b></span>
         </div>
         <div class="sp-verdict ${item.win ? 'win' : 'lose'}">${item.win ? '🛡️ 击退！' : '🔥 洗劫！'}</div>
-        <div class="sp-sub">${item.win ? '防御成功，最强守护者获得嘉奖' : '城市最多的玩家将失去一座城市'}</div>
+        <div class="sp-sub">${item.win ? '防御成功，出力最多的玩家获得嘉奖' : '防御出力最少的玩家将失去一座城市'}</div>
       </div>`;
   } else {
     st.innerHTML = `
