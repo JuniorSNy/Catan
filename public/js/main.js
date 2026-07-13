@@ -627,7 +627,7 @@ socket.on('returnToLobby', () => {
   clearTimeout(holdTimer);
   for (const m of ['modal-winner', 'modal-discard', 'modal-steal', 'modal-trade',
     'modal-yop', 'modal-monopoly', 'modal-endgame', 'modal-aqueduct',
-    'modal-alchemist', 'modal-pick', 'modal-knightmenu', 'modal-improve']) {
+    'modal-alchemist', 'modal-pick', 'modal-knightmenu', 'modal-improve', 'modal-settings']) {
     $(m).classList.add('hidden');
   }
   clearSpotlight();
@@ -1454,8 +1454,14 @@ $('btn-roll').onclick = () => { $('btn-roll').disabled = true; send({ type: 'rol
 $('btn-buydev').onclick = () => send({ type: 'buyDev' });
 $('btn-end').onclick = () => { armed = null; send({ type: 'endTurn' }); };
 
-// 结束本局（房主）：动作栏按钮需二次确认；胜利弹窗里的「再来一局」直接结束
-$('btn-endgame').onclick = () => $('modal-endgame').classList.remove('hidden');
+// 设置弹窗：声音音量 + 结束本局
+$('btn-settings').onclick = () => $('modal-settings').classList.remove('hidden');
+
+// 结束本局（房主，入口在设置弹窗里）：需二次确认；胜利弹窗里的「再来一局」直接结束
+$('btn-endgame').onclick = () => {
+  $('modal-settings').classList.add('hidden');
+  $('modal-endgame').classList.remove('hidden');
+};
 $('endgame-confirm').onclick = () => { $('modal-endgame').classList.add('hidden'); socket.emit('endGame'); };
 $('btn-again').onclick = () => socket.emit('endGame');
 

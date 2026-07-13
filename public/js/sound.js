@@ -46,10 +46,6 @@ function syncUI() {
 export function initSound() {
   syncUI();
 
-  $('sound-toggle').addEventListener('click', () => {
-    $('sound-panel').classList.toggle('hidden');
-  });
-
   $('bgm-toggle').addEventListener('click', () => {
     bgmOn = !bgmOn;
     localStorage.setItem('catan_bgm_on', bgmOn ? '1' : '0');
