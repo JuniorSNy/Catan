@@ -523,7 +523,31 @@ body {
 .dev-card:hover:not(:disabled) { transform: translateY(-6px); }
 .dev-card:disabled { opacity: .55; cursor: default; }
 
-#action-buttons { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; }
+#action-buttons { display: flex; gap: 9px; margin-left: auto; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
+
+/* 建造弹出菜单：收纳修路/村庄/城市/发展卡/骑士/城墙 */
+#build-box { position: relative; }
+#build-menu {
+  position: absolute; bottom: calc(100% + 12px); left: 50%; transform: translateX(-50%);
+  display: flex; flex-direction: column; gap: 7px; width: 224px;
+  background: linear-gradient(180deg, #fbf6e9, #f0e6cb);
+  border: 1px solid var(--panel-border); border-radius: 14px; padding: 10px;
+  box-shadow: 0 12px 30px rgba(0,20,35,.4); z-index: 35;
+  animation: pop-in .14s ease;
+}
+#build-menu::after { /* 指向建造按钮的小三角 */
+  content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+  border: 9px solid transparent; border-top-color: #f0e6cb;
+}
+#build-menu .btn {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  width: 100%; text-align: left; padding: 10px 13px;
+}
+#build-menu .btn small { font-size: 12.5px; color: #8a7350; font-weight: 600; white-space: nowrap; }
+#btn-build.armed {
+  background: var(--accent); color: #fff; border-color: #b55f10;
+  box-shadow: 0 0 0 3px rgba(230,126,34,.4); text-shadow: 0 1px 2px rgba(0,0,0,.25);
+}
 
 /* ---------- 棋盘 SVG ---------- */
 /* .hex 是盖在板块图之上的透明点击热区（fill 需可命中，不能用 none） */

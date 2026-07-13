@@ -1246,9 +1246,25 @@ function renderButtons() {
     $(id).classList.toggle('armed', armed === kind);
   }
 
+  // 建造总按钮：收纳修路/村庄/城市/发展卡/骑士/城墙；已选类型时显示放置中状态
+  const ARMED_LABEL = { road: '🛤️ 修路', settlement: '🏠 村庄', city: '🏰 城市', knight: '⚔️ 骑士', wall: '🧱 城墙' };
+  $('btn-build').disabled = !main;
+  $('btn-build').classList.toggle('armed', !!armed);
+  $('btn-build').textContent = armed ? `${ARMED_LABEL[armed]}：点棋盘放置` : '🔨 建造';
+  if (!main) $('build-menu').classList.add('hidden');
+
   // 房主随时可结束本局
   $('btn-endgame').classList.toggle('hidden', !amHost());
 }
+
+// 建造菜单开合：点按钮切换，点菜单里任意可用项或菜单外收起
+$('btn-build').onclick = () => $('build-menu').classList.toggle('hidden');
+$('build-menu').addEventListener('click', (e) => {
+  if (e.target.closest('button:not(:disabled)')) $('build-menu').classList.add('hidden');
+});
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#build-box')) $('build-menu').classList.add('hidden');
+});
 
 // ---------- 热点交互 ----------
 // 悬停放置点时显示的半透明预览棋子（自己的颜色）
