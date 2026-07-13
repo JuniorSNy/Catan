@@ -888,7 +888,6 @@ function renderPlayers() {
     const div = document.createElement('div');
     div.className = `player-card${active ? ' active' : ''}`;
     div.id = `player-card-${i}`;
-    div.style.borderLeftColor = p.color;
     const ckMode = S.mode === 'ck';
     const badges = [];
     if (S.awards.longestRoad?.player === i) badges.push('<span class="badge">🛤️ 最长道路</span>');
@@ -901,19 +900,21 @@ function renderPlayers() {
       if (p.defenderVP > 0) badges.push(`<span class="badge">🏅 守护者×${p.defenderVP}</span>`);
     }
     const ckStats = ckMode
-      ? `<span title="城市升级：贸易/政治/科学">${TRACKS.map((t) => `<b style="color:${TRACK_META[t].color}">${TRACK_META[t].name[0]}${p.improvements[t]}</b>`).join(' ')}</span>`
+      ? TRACKS.map((t) => `<span title="${TRACK_META[t].name}升级等级"><b style="color:${TRACK_META[t].color}">${TRACK_META[t].name}</b> ${p.improvements[t]}</span>`).join('')
       : `<span title="已出骑士">⚔️ ${p.knightsPlayed}</span>`;
+    div.style.setProperty('--pc', p.color);
     div.innerHTML = `
-      <div class="p-name">
-        <span>${esc(p.name)}${i === myIndex ? '（我）' : ''}${p.connected ? '' : ' <span class="offline">离线</span>'}</span>
-        <span class="vp-big">${i === myIndex ? S.you.vpTotal : p.vp} 分</span>
+      <div class="p-top">
+        <span class="p-ava"></span>
+        <span class="p-nm">${esc(p.name)}${i === myIndex ? '<small>（我）</small>' : ''}${p.connected ? '' : ' <span class="offline">离线</span>'}</span>
+        <span class="p-vp"><b>${i === myIndex ? S.you.vpTotal : p.vp}</b><small>分</small></span>
       </div>
       <div class="p-stats">
         <span title="手牌">🃏 ${p.handCount}</span>
         <span title="${ckMode ? '进步卡' : '发展卡'}">🎴 ${p.devCount}</span>
         ${ckStats}
-        ${badges.join('')}
-      </div>`;
+      </div>
+      ${badges.length ? `<div class="p-badges">${badges.join('')}</div>` : ''}`;
     panel.appendChild(div);
   });
 }
