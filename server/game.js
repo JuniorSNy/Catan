@@ -286,6 +286,12 @@ export class Game {
 
   finishRoll(total) {
     if (total === 7) {
+      // 事件骰照常结算：掷 7 同样按城门发进步卡（只是无产出、不触发引水渠）
+      if (this.ck) {
+        this.distributeProgress();
+        this.checkWin(); // 抽到分数进步卡可能直接获胜
+        if (this.phase !== 'play') return;
+      }
       const pending = {};
       if (!this.dev) { // 调试模式：手牌填满，跳过弃牌免得点到手麻
         this.players.forEach((pl, i) => {

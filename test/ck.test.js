@@ -252,6 +252,19 @@ test('ck：事件骰城门按红骰发进步卡，分数卡立即亮出', () => 
   assert.equal(g.players[1].progressCards.length, 0);
 });
 
+test('ck：掷出 7 时事件骰照常发进步卡（无产出、不触发引水渠）', () => {
+  const g = newCK(3);
+  doSetup(g);
+  g.turn.player = 0;
+  g.turn.state = 'preroll';
+  g.players[0].improvements.science = 5; // 红骰 1-6 都能拿
+  const before = g.players[0].progressCards.length + g.players[0].progressVP;
+  g.roll(0, { d1: 3, d2: 4, eventDie: 'science' }); // 总点数 7 + 科学城门
+  const pl = g.players[0];
+  assert.equal(pl.progressCards.length + pl.progressVP, before + 1);
+  assert.notEqual(g.turn.state, 'aqueduct'); // 掷 7 不触发引水渠
+});
+
 test('ck：进步卡手牌上限 4 张', () => {
   const g = newCK(3);
   doSetup(g);
