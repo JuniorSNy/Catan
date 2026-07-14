@@ -556,7 +556,12 @@ body {
   background: linear-gradient(180deg, #fbf6e9, #f0e6cb);
   border: 1px solid var(--panel-border); border-radius: 14px; padding: 10px;
   box-shadow: 0 12px 30px rgba(0,20,35,.4); z-index: 35;
-  animation: pop-in .14s ease;
+  /* 关键帧必须带上 translateX(-50%)：pop-in 只写 scale 会在动画期间丢掉居中位移，导致菜单先偏右再跳回 */
+  animation: build-pop .14s ease;
+}
+@keyframes build-pop {
+  from { transform: translateX(-50%) scale(.9); opacity: 0; }
+  to { transform: translateX(-50%) scale(1); opacity: 1; }
 }
 #build-menu::after { /* 指向建造按钮的小三角 */
   content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
