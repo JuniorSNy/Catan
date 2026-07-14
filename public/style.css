@@ -1,5 +1,25 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* 未来荧黑 Glow Sans SC（自托管子集 woff2，详见 fonts/README.md；缺字回落系统字体） */
+@font-face {
+  font-family: "Glow Sans SC";
+  src: url("/fonts/GlowSansSC-Regular.woff2") format("woff2");
+  font-weight: 300 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Glow Sans SC";
+  src: url("/fonts/GlowSansSC-Bold.woff2") format("woff2");
+  font-weight: 600 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Glow Sans SC";
+  src: url("/fonts/GlowSansSC-Heavy.woff2") format("woff2");
+  font-weight: 800 900;
+  font-display: swap;
+}
+
 :root {
   --sea: #4098c0;
   --sea-deep: #1e6084;
@@ -8,9 +28,10 @@
   --panel-line: rgba(140, 110, 60, .28);
   --text: #3a3128;
   --accent: #e67e22;
-  /* 标题用衬线、数字用圆润字体（Google Fonts，加载失败自动回落系统字体） */
-  --font-title: "Noto Serif SC", "PingFang SC", "Microsoft YaHei", serif;
-  --font-num: "Baloo 2", "PingFang SC", "Microsoft YaHei", sans-serif;
+  /* 全站统一未来荧黑；标题/数字用重字重体现层级 */
+  --font-body: "Glow Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-title: var(--font-body);
+  --font-num: var(--font-body);
 }
 
 h1, h2, .turn-banner-inner { font-family: var(--font-title); }
@@ -19,7 +40,7 @@ h1, h2, .turn-banner-inner { font-family: var(--font-title); }
 
 html, body { height: 100%; }
 body {
-  font-family: "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+  font-family: var(--font-body);
   /* 海面：插画水波纹理平铺，上压深蓝 tint 拉回主色调并保证白字对比度，
      再叠左上高光/右下压暗做纵深；最底层渐变作图片加载兜底 */
   background:
