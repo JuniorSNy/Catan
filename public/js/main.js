@@ -2029,14 +2029,21 @@ function animateDiceRoll(d1, d2, eventFace = null) {
 }
 
 function playEvents() {
-  let delay = 0; // 同一批事件按顺序错开播放（骰子动画已在收到状态时单独播放）
+  let delay = 0;       // 同一批事件按顺序错开播放（骰子动画已在收到状态时单独播放）
+  let lastGainEnd = 0; // 最后一张资源飞牌的落地时刻：进步卡发放安排在这之后
+  const progressEvents = []; // 抽进步卡单独攒起来，等资源全部落地后作为第二阶段播放
   for (const ev of S.events) {
     if (ev.seq <= lastSeq) continue;
     lastSeq = ev.seq;
+    if (ev.type === 'progress') {
+      progressEvents.push(ev);
+      continue;
+    }
     switch (ev.type) {
       case 'gain': {
         const d = delay;
         const { player, res, n } = ev;
+        lastGainEnd = Math.max(lastGainEnd, d + FLY_MS + (Math.min(n, 6) - 1) * FLY_STAGGER);
         setTimeout(() => {
           // 从产出地块飞牌：自己飞进手牌，别人飞到其状态栏卡片；条件不满足时回落为飘字
           if (!flyResourceFromHex(res, n, player)) {
@@ -2142,16 +2149,6 @@ function playEvents() {
       case 'saboteur':
         for (const i of ev.players) floatOverPlayer(i, '💥 破坏者：弃一半手牌');
         break;
-      case 'progress': {
-        // 抽牌（他人不可见内容）：保留小飞牌，不打断节奏
-        const d = delay;
-        const { player, deck } = ev;
-        setTimeout(() => {
-          if (!flyProgressCard(deck, player)) floatOverPlayer(player, '🎴 +1');
-        }, d);
-        delay += 250;
-        break;
-      }
       case 'progressVP':
         // 分数卡抽到即亮出：中央演出真实卡面
         spotlight({
@@ -2200,10 +2197,20 @@ function playEvents() {
         break;
     }
   }
+  // 第二阶段：抽进步卡的飞牌等所有资源飞牌落地后再逐张播放（先发资源，再发进步卡）
+  let pDelay = Math.max(delay, lastGainEnd ? lastGainEnd + 350 : 0);
+  for (const ev of progressEvents) {
+    const d = pDelay;
+    const { player, deck } = ev;
+    setTimeout(() => {
+      if (!flyProgressCard(deck, player)) floatOverPlayer(player, '🎴 +1');
+    }, d);
+    pDelay += 450;
+  }
   // 兜底结清：所有飞牌理论上都落地之后，强制核对一次数字（动画被打断也不会卡旧值）
   if (Object.keys(pendingSelf).length || Object.keys(pendingCount).length) {
     clearTimeout(pendingFlushTimer);
-    pendingFlushTimer = setTimeout(flushPending, delay + FLY_MS + 6 * FLY_STAGGER + 1500);
+    pendingFlushTimer = setTimeout(flushPending, Math.max(delay, pDelay) + FLY_MS + 6 * FLY_STAGGER + 1500);
   }
 }
 
