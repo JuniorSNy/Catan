@@ -19,13 +19,13 @@
   font-weight: 800 900;
   font-display: swap;
 }
-/* 地块数字令牌保留原来的圆体 Baloo 2（仅 0-9 的 3KB 子集，自托管） */
+/* 地块数字令牌与港口汇率保留原来的圆体 Baloo 2（仅 0-9 和冒号的 3KB 子集，自托管） */
 @font-face {
   font-family: "Baloo 2";
   src: url("/fonts/Baloo2-Bold-digits.woff2") format("woff2");
   font-weight: 700;
   font-display: swap;
-  unicode-range: U+30-39;
+  unicode-range: U+30-3A;
 }
 
 :root {
@@ -614,7 +614,7 @@ body {
 /* 港口：插画徽章（harbor-*.webp）+ 底部羊皮纸比例小签 */
 .harbor-text { font-size: .3px; text-anchor: middle; pointer-events: none; }
 .rate-pill { fill: #f7ecd2; stroke: #8a7a55; stroke-width: .018; }
-.harbor-rate { font-size: .14px; font-weight: 700; fill: #6b5a35; font-family: var(--font-num); }
+.harbor-rate { font-size: .14px; font-weight: 700; fill: #6b5a35; font-family: "Baloo 2", var(--font-num); } /* 港口汇率保留圆体 */
 .harbor-line { stroke: #8a7a55; stroke-width: .035; stroke-dasharray: .1 .07; fill: none; }
 
 .road-piece { stroke-linecap: round; stroke-width: .16; }
