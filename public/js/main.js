@@ -1812,7 +1812,12 @@ function renderTradeBanner() {
   const iAmFrom = t.from === myIndex;
   const iAmPlayer = myIndex >= 0 && !!S.players[myIndex];
 
-  const label = document.createElement('span');
+  const title = document.createElement('div');
+  title.className = 'trade-title';
+  title.textContent = '🔄 交易提议';
+  banner.appendChild(title);
+
+  const label = document.createElement('div');
   label.className = 'trade-desc';
   label.innerHTML = iAmFrom
     ? `你发起的交易：出 ${fmt(t.give)} ➡️ 换 ${fmt(t.get)}`
@@ -1820,6 +1825,8 @@ function renderTradeBanner() {
   banner.appendChild(label);
 
   // 全局视角：所有对手的应答状态，人人（含观战者）可见
+  const chips = document.createElement('div');
+  chips.className = 'trade-chips';
   S.players.forEach((p, i) => {
     if (i === t.from) return;
     const resp = t.responses[i];
@@ -1829,34 +1836,38 @@ function renderTradeBanner() {
       b.className = 'btn primary small';
       b.textContent = `✅ 与 ${p.name} 成交`;
       b.onclick = () => send({ type: 'acceptTradeWith', target: i });
-      banner.appendChild(b);
+      chips.appendChild(b);
       return;
     }
     const chip = document.createElement('span');
     chip.className = 'trade-chip';
     const face = resp === 'accept' ? '✅' : resp === 'decline' ? '❌' : '⏳';
     chip.textContent = `${face} ${p.name}${i === myIndex ? '（你）' : ''}`;
-    banner.appendChild(chip);
+    chips.appendChild(chip);
   });
+  banner.appendChild(chips);
 
   // 视角相关操作按钮（观战者无）
+  const actions = document.createElement('div');
+  actions.className = 'trade-actions';
   if (iAmFrom) {
     const cancel = document.createElement('button');
     cancel.className = 'btn small';
-    cancel.textContent = '取消';
+    cancel.textContent = '取消交易';
     cancel.onclick = () => send({ type: 'cancelTrade' });
-    banner.appendChild(cancel);
+    actions.appendChild(cancel);
   } else if (iAmPlayer && !t.responses[myIndex]) {
     const yes = document.createElement('button');
-    yes.className = 'btn primary small';
+    yes.className = 'btn primary';
     yes.textContent = '✅ 同意';
     yes.onclick = () => send({ type: 'respondTrade', accept: true });
     const no = document.createElement('button');
-    no.className = 'btn small';
+    no.className = 'btn';
     no.textContent = '❌ 拒绝';
     no.onclick = () => send({ type: 'respondTrade', accept: false });
-    banner.append(yes, no);
+    actions.append(yes, no);
   }
+  if (actions.childElementCount) banner.appendChild(actions);
 }
 
 // ---------- 丰收之年 / 垄断 ----------
@@ -1994,10 +2005,40 @@ function playEvents() {
       case 'monopoly':
         floatOverPlayer(ev.player, `💰 +${ev.n} ${resIcon(ev.res)}`);
         break;
-      case 'trade':
-        floatOverPlayer(ev.a, '🔄');
-        floatOverPlayer(ev.b, '🔄');
+      case 'trade': {
+        // 中央成交演出：全桌看清谁和谁换了什么（give/get 由服务端随事件下发）
+        if (!ev.give) { // 旧版服务端无内容字段时退回小飘字
+          floatOverPlayer(ev.a, '🔄');
+          floatOverPlayer(ev.b, '🔄');
+          break;
+        }
+        const A = S.players[ev.a];
+        const B = S.players[ev.b];
+        const goods = (m) => cardList().filter((r) => m[r] > 0)
+          .map((r) => `<span class="sp-goodline">${resIcon(r)}×${m[r]}</span>`).join('')
+          || '<span class="sp-goodline dim">什么都没有</span>';
+        spotlight({
+          kind: 'banner',
+          icon: '🤝',
+          title: '交易达成',
+          html: `<div class="sp-tradebox">
+            <div class="sp-tr-side">
+              <b style="color:${A.color}">${esc(A.name)}</b>
+              <span class="sp-tr-lab">付出</span>
+              <div class="sp-goods">${goods(ev.give)}</div>
+            </div>
+            <div class="sp-tr-x">⇄</div>
+            <div class="sp-tr-side">
+              <b style="color:${B.color}">${esc(B.name)}</b>
+              <span class="sp-tr-lab">付出</span>
+              <div class="sp-goods">${goods(ev.get)}</div>
+            </div>
+          </div>`,
+          accent: '#3a8fb5',
+          dur: 4800,
+        });
         break;
+      }
       case 'turnEnd':
         showTurnBanner(ev.to);
         break;

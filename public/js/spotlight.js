@@ -77,12 +77,14 @@ function show(item) {
         <div class="sp-sub">${item.win ? '防御成功，出力最多的玩家获得嘉奖' : '防御出力最少的玩家将失去一座城市'}</div>
       </div>`;
   } else {
+    // item.html：调用方自行拼好（并转义）的内容块，插在标题下方（交易明细等）
     st.innerHTML = `
       <div class="sp-scrim"></div>
       <div class="sp-stage">
         ${item.img ? `<img class="sp-bannerimg" src="${item.img}" alt="">`
     : `<div class="sp-bannerico">${item.icon || '📣'}</div>`}
         <div class="sp-title big">${esc(item.title)}</div>
+        ${item.html || ''}
         ${item.sub ? `<div class="sp-sub">${esc(item.sub)}</div>` : ''}
       </div>`;
   }

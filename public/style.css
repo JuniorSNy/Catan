@@ -772,19 +772,29 @@ body {
 
 .btn-column { display: flex; flex-direction: column; gap: 8px; }
 
-/* ---------- 交易横幅 ---------- */
+/* ---------- 交易提议框：屏幕中央（Master Duel 式关键交互居中） ---------- */
 #trade-banner {
-  position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
-  background: linear-gradient(170deg, #fdfaf0, #f4ecd7);
-  border: 1px solid var(--panel-line);
-  border-radius: 12px; padding: 13px 22px; z-index: 40;
-  box-shadow: 0 8px 30px rgba(0,0,0,.3); font-size: 16.5px;
-  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-  animation: slide-down .6s ease;
-  max-width: 90vw;
+  position: fixed; top: 44%; left: 50%; transform: translate(-50%, -50%);
+  background:
+    linear-gradient(170deg, rgba(253,250,240,.94), rgba(244,236,215,.92)),
+    url("/assets/opt/parchment-tile.webp") repeat;
+  background-size: auto, 340px;
+  border: 2px solid rgba(120,95,50,.4);
+  border-radius: 18px; padding: 22px 34px; z-index: 40;
+  box-shadow: 0 24px 60px rgba(0,0,0,.45); font-size: 17px;
+  display: flex; flex-direction: column; align-items: center; gap: 13px;
+  animation: trade-pop .4s cubic-bezier(.3,1.3,.5,1);
+  max-width: min(560px, 92vw); text-align: center;
 }
-#trade-banner .trade-desc { font-weight: 600; }
-#trade-banner .trade-chip { padding: 3px 11px; border-radius: 999px; background: rgba(120,95,50,.14); font-size: 14.5px; white-space: nowrap; }
+#trade-banner .trade-title { font-family: var(--font-title); font-size: 22px; font-weight: 800; color: #6b4a1e; }
+#trade-banner .trade-desc { font-weight: 600; font-size: 18px; line-height: 1.6; }
+#trade-banner .trade-chips { display: flex; flex-wrap: wrap; gap: 9px; justify-content: center; align-items: center; }
+#trade-banner .trade-chip { padding: 4px 13px; border-radius: 999px; background: rgba(120,95,50,.14); font-size: 15px; white-space: nowrap; }
+#trade-banner .trade-actions { display: flex; gap: 12px; justify-content: center; }
+@keyframes trade-pop {
+  from { transform: translate(-50%,-50%) scale(.82); opacity: 0; }
+  to { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+}
 @keyframes slide-down { from { transform: translate(-50%,-120%); } to { transform: translate(-50%,0); } }
 
 /* ---------- 浮动提示 ---------- */
@@ -1112,6 +1122,32 @@ body {
 @keyframes sp-verdict {
   0% { opacity: 0; transform: scale(2.4) rotate(-6deg); }
   100% { opacity: 1; transform: scale(1) rotate(-3deg); }
+}
+
+/* 成交演出：双方付出的牌面对面展示 */
+#spotlight .sp-tradebox { display: flex; align-items: stretch; gap: 22px; }
+#spotlight .sp-tr-side {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  background: rgba(14,18,26,.88); border: 1px solid rgba(255,255,255,.16);
+  border-radius: 16px; padding: 16px 24px; min-width: 160px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.4);
+}
+#spotlight .sp-tr-side b { font-size: 23px; font-family: var(--font-title); text-shadow: 0 2px 6px rgba(0,0,0,.75), 0 0 3px rgba(0,0,0,.6); }
+#spotlight .sp-tr-lab { color: #9fb0c4; font-size: 14px; }
+#spotlight .sp-goods {
+  display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+  color: #fff; font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+#spotlight .sp-goods .res-ico { width: 1.5em; height: 1.5em; vertical-align: -0.35em; }
+#spotlight .sp-goodline.dim { color: #8b98a8; font-size: 15px; font-weight: 500; }
+#spotlight .sp-tr-x {
+  align-self: center; font-size: 42px; color: #ffd54f;
+  text-shadow: 0 2px 10px rgba(0,0,0,.6);
+  animation: sp-tr-swap 1.4s ease-in-out infinite;
+}
+@keyframes sp-tr-swap {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.25); }
 }
 
 /* ---------- 中央大骰子 ---------- */

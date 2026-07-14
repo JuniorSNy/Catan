@@ -700,7 +700,8 @@ export class Game {
       this.players[p].hand[r] += get[r] - give[r];
       this.players[target].hand[r] += give[r] - get[r];
     }
-    this.addEvent('trade', { a: p, b: target });
+    // give/get 随事件下发：客户端播放「谁和谁换了什么」的中央成交演出
+    this.addEvent('trade', { a: p, b: target, give, get });
     this.addLog(`${this.players[p].name} 与 ${this.players[target].name} 完成了交易`);
     this.trade = null;
   }
