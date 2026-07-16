@@ -105,6 +105,15 @@
       </div>
       <div id="roll-overlay"></div>
       <div id="turn-banner"><div class="turn-banner-inner"></div></div>
+      <!-- 自己回合掷骰阶段：中央大掷骰按钮（仪式感 + 回合提醒） -->
+      <div id="roll-big-wrap" class="hidden">
+        <button id="roll-big">
+          <span class="rb-dice">🎲</span>
+          <span class="rb-text">掷骰子<small>你的回合</small></span>
+        </button>
+      </div>
+      <!-- 结束回合：右上角悬浮，与底栏动作按钮视觉隔离防误触 -->
+      <button id="btn-end" class="btn danger">✅ 结束回合</button>
       <div id="zoom-controls">
         <button id="zoom-in" title="放大">＋</button>
         <button id="zoom-out" title="缩小">－</button>
@@ -147,7 +156,6 @@
     <div id="hand-cards"></div>
     <div id="dev-cards"></div>
     <div id="action-buttons">
-      <button id="btn-roll" class="btn primary">🎲 掷骰子</button>
       <div id="build-box">
         <div id="build-menu" class="hidden">
           <button id="btn-road" class="btn build" title="1木 1砖">🛤️ 修路<small>1木 1砖</small></button>
@@ -161,7 +169,6 @@
       </div>
       <button id="btn-improve" class="btn build hidden" title="城市升级：花商品提升贸易/政治/科学等级（点击棋盘左侧牌堆同效）">🏛️ 升级</button>
       <button id="btn-trade" class="btn">🔄 交易</button>
-      <button id="btn-end" class="btn danger">✅ 结束回合</button>
     </div>
   </div>
 

@@ -689,6 +689,7 @@ function updateSpectatorUI() {
   $('hand-cards').classList.toggle('hidden', hide);
   $('dev-cards').classList.toggle('hidden', hide);
   $('action-buttons').classList.toggle('hidden', hide);
+  $('btn-end').classList.toggle('hidden', hide);
   $('bottom-bar').classList.toggle('spectating', hide);
   $('btn-spec-leave').classList.toggle('hidden', !hide);
   // 观战状态前缀由 renderStatus 统一处理（这里加会被下一次渲染覆盖）
@@ -1269,7 +1270,8 @@ function renderButtons() {
   const main = my && S.turn.state === 'main';
   const hand = S.you.hand;
   const ckMode = S.mode === 'ck';
-  $('btn-roll').disabled = !(my && S.turn.state === 'preroll');
+  // 中央大掷骰按钮：只在自己回合的掷骰阶段弹出
+  $('roll-big-wrap').classList.toggle('hidden', !(my && S.turn.state === 'preroll'));
   $('btn-road').disabled = !(main && hand.wood >= 1 && hand.brick >= 1 && (S.you.hints.roads || []).length > 0);
   $('btn-settlement').disabled = !(main && hand.wood >= 1 && hand.brick >= 1 && hand.sheep >= 1 && hand.wheat >= 1 && (S.you.hints.settlements || []).length > 0);
   $('btn-city').disabled = !(main && hand.wheat >= 2 && hand.ore >= 3 && (S.you.hints.cities || []).length > 0);
@@ -1496,7 +1498,7 @@ $('zoom-in').onclick = () => zoomAt(1.35);
 $('zoom-out').onclick = () => zoomAt(1 / 1.35);
 $('zoom-reset').onclick = () => resetZoom();
 
-$('btn-roll').onclick = () => { $('btn-roll').disabled = true; send({ type: 'roll' }); };
+$('roll-big').onclick = () => { $('roll-big-wrap').classList.add('hidden'); send({ type: 'roll' }); };
 $('btn-buydev').onclick = () => send({ type: 'buyDev' });
 $('btn-end').onclick = () => { armed = null; send({ type: 'endTurn' }); };
 

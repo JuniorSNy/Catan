@@ -323,6 +323,52 @@ body {
   100% { opacity: 0; transform: translateX(90px); }
 }
 
+/* 中央大掷骰按钮：自己回合的掷骰阶段弹出（位置低于回合横幅避免重叠） */
+#roll-big-wrap {
+  position: absolute; top: 55%; left: 50%; transform: translate(-50%, -50%);
+  z-index: 21; pointer-events: none;
+}
+#roll-big {
+  pointer-events: auto;
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 44px 16px 34px; border-radius: 60px;
+  border: 3px solid rgba(255,255,255,.8); cursor: pointer;
+  background: linear-gradient(180deg, #f6a03c, #dd6f16);
+  color: #fff; font-family: inherit; text-shadow: 0 2px 5px rgba(0,0,0,.3);
+  box-shadow: 0 14px 38px rgba(0,0,0,.42), inset 0 2px 0 rgba(255,255,255,.4);
+  animation: roll-big-in .55s cubic-bezier(.34,1.56,.64,1) backwards,
+             roll-big-glow 2.4s ease-in-out .55s infinite;
+  transition: transform .15s ease;
+}
+#roll-big:hover { transform: scale(1.07); }
+#roll-big:active { transform: scale(.97); }
+#roll-big .rb-dice { font-size: 46px; line-height: 1; animation: rb-dice-rock 2.4s ease-in-out infinite; }
+#roll-big .rb-text {
+  display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15;
+  font-size: 30px; font-weight: 800; letter-spacing: 4px;
+}
+#roll-big .rb-text small { font-size: 14px; font-weight: 600; letter-spacing: 2px; opacity: .85; }
+@keyframes roll-big-in {
+  0% { opacity: 0; transform: scale(.4); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes roll-big-glow {
+  0%, 100% { box-shadow: 0 14px 38px rgba(0,0,0,.42), inset 0 2px 0 rgba(255,255,255,.4), 0 0 0 0 rgba(255,196,90,.55); }
+  50% { box-shadow: 0 14px 38px rgba(0,0,0,.42), inset 0 2px 0 rgba(255,255,255,.4), 0 0 0 16px rgba(255,196,90,0); }
+}
+@keyframes rb-dice-rock {
+  0%, 100% { transform: rotate(-10deg); }
+  50% { transform: rotate(12deg) translateY(-3px); }
+}
+
+/* 结束回合：棋盘右上角悬浮（与底栏动作按钮隔离，防误触） */
+#btn-end {
+  position: absolute; right: 14px; top: 8px; z-index: 10;
+  padding: 10px 24px; font-size: 17px; font-weight: 600;
+  box-shadow: 0 3px 10px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.3);
+}
+#btn-end:disabled { opacity: .3; }
+
 /* 新回合玩家卡片闪烁 */
 .player-card.turn-flash { animation: card-flash 3s ease; }
 @keyframes card-flash {
@@ -1217,6 +1263,9 @@ body {
   .player-card .p-nm { font-size: 17px; }
   .player-card .p-vp b { font-size: 30px; }
   #dice-stage .die.big { width: 64px; height: 64px; }
+  #roll-big { padding: 12px 32px 12px 26px; }
+  #roll-big .rb-dice { font-size: 34px; }
+  #roll-big .rb-text { font-size: 23px; }
   #spotlight .sp-cardimg { height: 38vh; }
   #improve-cols { flex-direction: column; align-items: stretch; }
   .imp-col { max-width: none; }
