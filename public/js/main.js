@@ -2250,8 +2250,17 @@ const RES_TERRAIN = {
 };
 function flyResourceFromHex(res, n, player) {
   if (!S || !lastDiceTotal) return false;
+  // 该玩家的建筑相邻的地块集合（商品只有城市产出，只算城市旁）
+  const isCommodity = res === 'paper' || res === 'cloth' || res === 'coin';
+  const mine = new Set();
+  for (const [vid, b] of Object.entries(S.buildings)) {
+    if (b.player !== player) continue;
+    if (isCommodity && b.type !== 'city') continue;
+    for (const hid of S.board.vertices[vid].hexes) mine.add(hid);
+  }
   const hexes = S.board.hexes.filter(
-    (h) => h.number === lastDiceTotal && h.terrain === RES_TERRAIN[res] && h.id !== S.robber,
+    (h) => h.number === lastDiceTotal && h.terrain === RES_TERRAIN[res] && h.id !== S.robber
+      && mine.has(h.id),
   );
   if (!hexes.length) return false;
   // 目标：自己 → 对应手牌卡；别人 → 其状态栏玩家卡片
