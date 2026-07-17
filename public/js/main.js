@@ -877,7 +877,7 @@ function renderStatus() {
     text = `🎉 ${S.players[S.winner].name} 获胜！`;
   } else {
     const st = S.turn.state;
-    if (st === 'preroll') text = isMyTurn() ? '🎲 你的回合：请掷骰子（也可先打骑士卡）' : `${cur.name} 的回合`;
+    if (st === 'preroll') text = isMyTurn() ? `🎲 你的回合：请掷骰子（也可先打${S.mode === 'ck' ? '炼金术士' : '骑士卡'}）` : `${cur.name} 的回合`;
     else if (st === 'discard') {
       const names = Object.keys(S.turn.pendingDiscards).map((i) => S.players[i].name).join('、');
       text = `等待弃牌：${names}`;
