@@ -627,7 +627,7 @@ export const ckMethods = {
     const idx = cards.findIndex((c) => c.type === card);
     if (idx < 0) this.err('对方没有这张进步卡');
     this.players[p].progressCards.push(cards.splice(idx, 1)[0]);
-    this.addEvent('steal', { from: pick.from, to: p });
+    this.addEvent('steal', { from: pick.from, to: p, progress: true }); // progress：偷的是进步卡，不经手牌
     const cn = PROGRESS_NAME[card];
     this.addLog(`${this.players[p].name} 偷走了 ${this.players[pick.from].name} 的一张进步卡`, { cat: 'steal' });
     this.addLog(`🔍 你偷到了 ${this.players[pick.from].name} 的进步卡「${cn}」`, { to: [p], cat: 'steal' });

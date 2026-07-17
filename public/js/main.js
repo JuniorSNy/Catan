@@ -576,6 +576,8 @@ function esc(s) {
 let holdUntil = 0;      // 结算冻结截止时刻
 let holdTimer = null;
 socket.on('state', (state) => {
+  // 换状态前留住旧手牌：偷牌事件不含具体牌（公开不剧透），自己偷到哪张靠新旧差推断
+  const oldHand = S?.you?.hand ? { ...S.you.hand } : null;
   S = state;
   window.__S = state; // 调试/测试用
   isSpectating = !!state.you.spectating;
@@ -601,7 +603,7 @@ socket.on('state', (state) => {
 
   // 新产出立即从显示数字里扣住（S 已替换：冻结期间上一批飞牌落地/兜底 flush 会重绘，
   // 若等到 applyState 才登记，这些重绘会提前泄露新数字，表现为卡片抖一下又跌回去）
-  registerPendingGains();
+  registerPendingGains(oldHand);
 
   // 处于冻结窗口内则延后应用（含冻结期间到达的后续状态），否则立即应用
   const wait = holdUntil - Date.now();
@@ -622,15 +624,41 @@ let pendingCount = {};  // playerIdx -> n：状态栏手牌数的待结算量（
 let pendingFlushTimer = null;
 
 let lastPendingSeq = 0; // 登记游标独立于 lastSeq：状态到达即登记，playEvents 稍后才推进 lastSeq
-function registerPendingGains() {
+function registerPendingGains(oldHand) {
   const seen = Math.max(lastSeq, lastPendingSeq);
+  let mySteals = 0;     // 本批自己偷到的手牌数
+  const myGains = {};   // 本批 gain 事件里自己的进项（从手牌差里剔除，避免与偷牌重复计入）
   for (const ev of S.events) {
     if (ev.seq <= seen) continue;
     lastPendingSeq = Math.max(lastPendingSeq, ev.seq);
-    if (ev.type !== 'gain') continue;
-    pendingCount[ev.player] = (pendingCount[ev.player] || 0) + ev.n;
-    if (ev.player === myIndex) pendingSelf[ev.res] = (pendingSelf[ev.res] || 0) + ev.n;
+    if (ev.type === 'gain') {
+      pendingCount[ev.player] = (pendingCount[ev.player] || 0) + ev.n;
+      if (ev.player === myIndex) {
+        pendingSelf[ev.res] = (pendingSelf[ev.res] || 0) + ev.n;
+        myGains[ev.res] = (myGains[ev.res] || 0) + ev.n;
+      }
+    } else if (ev.type === 'steal' && !ev.progress) { // 进步卡偷取不经手牌，数字无需扣住
+      pendingCount[ev.to] = (pendingCount[ev.to] || 0) + 1;
+      if (ev.to === myIndex) mySteals++;
+    }
   }
+  // 自己偷到的牌事件里不写明是哪张（公开事件不剧透）：用新旧手牌差推断，扣住到卡背落地再 +1
+  if (mySteals > 0 && oldHand) {
+    for (const r of cardList()) {
+      let d = S.you.hand[r] - (oldHand[r] || 0) - (myGains[r] || 0);
+      while (d > 0 && mySteals > 0) {
+        pendingSelf[r] = (pendingSelf[r] || 0) + 1;
+        d--;
+        mySteals--;
+      }
+    }
+  }
+}
+
+// 偷牌落地：结清一张待结算（自己偷到的即手牌差推断出的那张，触发对应资源卡 bump +1）
+function revealSteal(to) {
+  const r = to === myIndex ? cardList().find((x) => pendingSelf[x] > 0) : null;
+  revealGain(to, r);
 }
 
 // 一张牌落地：解锁 1 点数字并重绘（重绘会触发对应卡片的 bump 动画）
@@ -2110,8 +2138,13 @@ function playEvents() {
         animStep((done) => {
           sfx.steal();
           floatOverPlayer(ev.from, '−1 🃏');
-          // 卡背从受害者飞向偷牌者；条件不满足（元素缺失等）回落为飘字
-          if (!flyStealCard(ev.from, ev.to)) floatOverPlayer(ev.to, '🕵️ +1');
+          // 数字被扣住到卡背落地才 +1（进步卡偷取不经手牌，无需结算）
+          const onArrive = ev.progress ? null : () => revealSteal(ev.to);
+          // 卡背从受害者飞向偷牌者；条件不满足（元素缺失等）回落为飘字并立即结清
+          if (!flyStealCard(ev.from, ev.to, onArrive)) {
+            floatOverPlayer(ev.to, '🕵️ +1');
+            onArrive?.();
+          }
           setTimeout(done, 600); // 飞行后半程可与后续步骤重叠
         });
         break;
@@ -2462,7 +2495,7 @@ const STEAL_MS = 1300;
 function stealAnchorEl(idx) {
   return idx === myIndex ? $('hand-cards') : $(`player-card-${idx}`);
 }
-function flyStealCard(fromIdx, toIdx) {
+function flyStealCard(fromIdx, toIdx, onArrive = null) {
   const fromEl = stealAnchorEl(fromIdx);
   const toEl = stealAnchorEl(toIdx);
   if (!fromEl || !toEl) return false;
@@ -2506,6 +2539,7 @@ function flyStealCard(fromIdx, toIdx) {
   ], { duration: STEAL_MS });
   anim.onfinish = () => {
     f.remove();
+    onArrive?.(); // 落地才结清数字：对应资源卡随重绘 bump +1
     sparkleAt(to.x, to.y);
     toEl.classList.remove('bump');
     void toEl.offsetWidth;
