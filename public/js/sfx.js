@@ -21,7 +21,7 @@ export function getSfxVolume() {
 
 // 整体响度系数：各音效的 gain 参数按舒适比例配好，这里统一放大到目标响度
 // （多声部叠加的峰值约 0.5，×1.6 后仍 <1 不削波；嫌吵/嫌轻优先调这里）
-const SFX_BOOST = 1.6;
+const SFX_BOOST = 2.0;
 
 function ac() {
   if (!ctx) {
