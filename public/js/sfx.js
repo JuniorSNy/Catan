@@ -147,6 +147,13 @@ export const sfx = {
     tone({ freq: 300, freq2: 180, type: 'triangle', dur: 0.13, gain: 0.24 });
   },
   // ---- 游戏事件音效 ----
+  // 掷出 7：重锤砸地 + 半音下行的不祥小动机（强盗现身演出）
+  seven() {
+    noise({ freq: 220, q: 0.8, dur: 0.28, gain: 0.3 });
+    tone({ freq: 98, freq2: 46, type: 'triangle', dur: 0.5, gain: 0.3 });
+    tone({ freq: 392, freq2: 372, type: 'sawtooth', dur: 0.16, gain: 0.08, when: 0.34 });
+    tone({ freq: 330, freq2: 300, type: 'sawtooth', dur: 0.34, gain: 0.1, when: 0.52 });
+  },
   // 强盗现身：低音下滑的阴森「咚——」，叠一声小二度制造不安
   robber() {
     tone({ freq: 200, freq2: 90, type: 'sawtooth', dur: 0.4, gain: 0.15 });

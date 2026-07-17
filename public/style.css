@@ -300,6 +300,71 @@ body {
   100% { opacity: 0; transform: translate(-50%,-56%) scale(1); }
 }
 
+/* ---------- 掷出 7：强盗现身全屏演出 ---------- */
+#seven-stage {
+  position: absolute; inset: 0; z-index: 22; pointer-events: none;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+  animation: sv-fade 2.75s ease forwards;
+}
+@keyframes sv-fade {
+  0%, 80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+#seven-stage .sv-scrim {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at center, rgba(70,0,0,.14) 30%, rgba(24,4,4,.6) 100%);
+  animation: sv-scrim .4s ease both;
+}
+@keyframes sv-scrim {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+#seven-stage .sv-box { position: relative; display: flex; flex-direction: column; align-items: center; }
+#seven-stage .sv-robber {
+  height: min(36vh, 300px);
+  filter: drop-shadow(0 20px 34px rgba(0,0,0,.65));
+  animation: sv-slam .5s cubic-bezier(.22,1.3,.36,1) both;
+}
+@keyframes sv-slam { /* 从镜头前砸落进画面 */
+  0% { opacity: 0; transform: translateY(-46px) scale(2.6); }
+  62% { opacity: 1; transform: translateY(6px) scale(.94); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+#seven-stage .sv-seven { /* 猩红大 7 像印章一样斜着砸上去 */
+  position: absolute; top: -34px; right: -62px;
+  font-size: 128px; font-weight: 800; line-height: 1; color: #ff4d33;
+  transform: rotate(14deg);
+  text-shadow:
+    0 0 26px rgba(255,70,40,.55),
+    0 4px 0 #7d1408, 0 5px 14px rgba(0,0,0,.6);
+  animation: sv-stamp .4s cubic-bezier(.3,1.6,.5,1) .28s both;
+}
+@keyframes sv-stamp {
+  0% { opacity: 0; transform: rotate(14deg) scale(3.2); }
+  70% { opacity: 1; transform: rotate(14deg) scale(.92); }
+  100% { opacity: 1; transform: rotate(14deg) scale(1); }
+}
+#seven-stage .sv-ring { /* 落地冲击波 */
+  position: absolute; top: 58%; left: 50%;
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 4px solid rgba(255,120,80,.85);
+  transform: translate(-50%, -50%);
+  animation: sv-ring .8s ease-out .34s both;
+}
+@keyframes sv-ring {
+  0% { opacity: .9; width: 40px; height: 40px; border-width: 5px; }
+  100% { opacity: 0; width: min(58vh, 560px); height: min(58vh, 560px); border-width: 1px; }
+}
+#seven-stage .sv-cap {
+  margin-top: 14px; font-size: 30px; font-weight: 800; letter-spacing: 10px;
+  color: #ffe9d8; text-shadow: 0 2px 8px rgba(0,0,0,.7), 0 0 22px rgba(255,90,50,.4);
+  animation: sv-cap .45s ease .4s both;
+}
+@keyframes sv-cap {
+  0% { opacity: 0; transform: translateY(16px); letter-spacing: 22px; }
+  100% { opacity: 1; transform: translateY(0); letter-spacing: 10px; }
+}
+
 /* 回合交接横幅 */
 #turn-banner {
   position: absolute; top: 40%; left: 0; right: 0;

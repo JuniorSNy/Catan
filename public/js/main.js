@@ -2293,16 +2293,35 @@ function animateDiceRoll(d1, d2, eventFace = null) {
       stage.classList.add('out');
       diceStageTimer = setTimeout(() => stage.classList.add('hidden'), 500);
     }, 1600);
-    // 中央大数字 + 产出板块闪烁
-    const overlay = $('roll-overlay');
-    overlay.textContent = total === 7 ? '7 🦹' : total;
-    overlay.classList.toggle('seven', total === 7);
-    overlay.classList.remove('show');
-    void overlay.offsetWidth;
-    overlay.classList.add('show');
-    setTimeout(() => overlay.classList.remove('show'), 4600);
-    if (total !== 7) highlightProducingHexes(total, S.robber);
+    if (total === 7) {
+      showSevenStage(); // 强盗现身全屏演出（替代大数字）
+    } else {
+      // 中央大数字 + 产出板块闪烁
+      const overlay = $('roll-overlay');
+      overlay.textContent = total;
+      overlay.classList.remove('seven', 'show');
+      void overlay.offsetWidth;
+      overlay.classList.add('show');
+      setTimeout(() => overlay.classList.remove('show'), 4600);
+      highlightProducingHexes(total, S.robber);
+    }
   }, 170);
+}
+
+// 掷出 7：暗场压幕 → 强盗砸进画面（震屏）→ 猩红大 7 盖章 → 冲击波扩散
+let sevenTimer = null;
+function showSevenStage() {
+  const st = $('seven-stage');
+  st.classList.remove('hidden');
+  // 重启全部入场动画（同一局可能连续掷出 7）
+  const els = [st, ...st.querySelectorAll('*')];
+  for (const el of els) el.style.animation = 'none';
+  void st.offsetWidth;
+  for (const el of els) el.style.animation = '';
+  sfx.seven();
+  setTimeout(() => shakeBoard(), 380); // 强盗落地瞬间震屏
+  clearTimeout(sevenTimer);
+  sevenTimer = setTimeout(() => st.classList.add('hidden'), 2750);
 }
 
 // ---------- 动画时间线：按事件顺序串行播放 ----------
