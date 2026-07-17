@@ -779,6 +779,7 @@ function renderAll() {
   renderButtons();
   renderHotspots();
   renderLog();
+  updateRollStats();
   renderModals();
   renderDevPanel();
   renderTradeBanner();
@@ -1649,6 +1650,53 @@ function setLogCollapsed(collapsed) {
 }
 $('log-head').onclick = () => setLogCollapsed(!$('log-panel').classList.contains('collapsed'));
 setLogCollapsed(localStorage.getItem('catan_log_open') !== '1');
+
+// ---------- 掷骰点数频率统计（log 框顶部迷你柱状图，数据由服务端 rollStats 下发） ----------
+function updateRollStats() {
+  const box = $('roll-stats');
+  const stats = S?.rollStats || {};
+  const max = Math.max(1, ...Object.values(stats));
+  let html = '';
+  for (let n = 2; n <= 12; n++) {
+    const c = stats[n] || 0;
+    const h = Math.max(2, Math.round((c / max) * 42));
+    html += `<div class="rs-col${n === 6 || n === 8 ? ' hot' : ''}">`
+      + `<span class="rs-count">${c || ''}</span>`
+      + `<div class="rs-bar" style="height:${h}px"></div>`
+      + `<span class="rs-num">${n}</span></div>`;
+  }
+  box.innerHTML = html;
+}
+
+// ---------- 战报框拖拽调高：顶边手柄上下拖动，高度持久化 ----------
+{
+  const panel = $('log-panel');
+  const savedH = parseInt(localStorage.getItem('catan_log_h'), 10);
+  if (Number.isFinite(savedH)) {
+    panel.style.height = `${savedH}px`;
+    panel.style.maxHeight = `${savedH}px`;
+  }
+  $('log-resize').addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startH = panel.getBoundingClientRect().height;
+    panel.classList.add('resizing');
+    const move = (ev) => {
+      const h = Math.round(Math.min(window.innerHeight * 0.85, Math.max(180, startH + (startY - ev.clientY))));
+      panel.style.height = `${h}px`;
+      panel.style.maxHeight = `${h}px`;
+    };
+    const up = () => {
+      panel.classList.remove('resizing');
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', up);
+      const h = parseInt(panel.style.height, 10);
+      if (Number.isFinite(h)) localStorage.setItem('catan_log_h', String(h));
+    };
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', up);
+  });
+}
 
 $('chat-send').onclick = sendChat;
 $('chat-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChat(); });

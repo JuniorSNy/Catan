@@ -461,11 +461,42 @@ body {
   border-radius: 999px; padding: 1px 8px; min-width: 20px; text-align: center;
   animation: pop-in .25s ease;
 }
-#log-panel.collapsed { width: auto; }
-#log-panel:not(.collapsed) #log-list { min-height: 220px; }
+#log-panel.collapsed { width: auto; height: auto !important; }
+#log-panel:not(.collapsed) #log-list { min-height: 120px; }
 #log-panel.collapsed #log-filter,
 #log-panel.collapsed #log-list,
+#log-panel.collapsed #roll-stats,
+#log-panel.collapsed #log-resize,
 #log-panel.collapsed #chat-row { display: none; }
+
+/* 顶边拖拽手柄：上下拖动调整战报框高度 */
+#log-resize {
+  position: absolute; left: 0; right: 0; top: -4px; height: 12px;
+  cursor: ns-resize; z-index: 2;
+}
+#log-resize::after {
+  content: ''; display: block; margin: 4px auto 0;
+  width: 44px; height: 4px; border-radius: 2px;
+  background: rgba(140,110,60,.35); opacity: 0; transition: opacity .15s;
+}
+#log-resize:hover::after, #log-panel.resizing #log-resize::after { opacity: 1; }
+#log-panel.resizing { user-select: none; }
+
+/* 掷骰点数频率统计：2-12 迷你柱状图（6/8 沿用棋盘红字习惯） */
+#roll-stats {
+  display: flex; align-items: flex-end; gap: 3px;
+  padding: 8px 14px 2px; flex-shrink: 0;
+}
+.rs-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+.rs-count { font-size: 10.5px; line-height: 1; color: #8a7a5c; font-variant-numeric: tabular-nums; }
+.rs-bar {
+  width: 100%; max-width: 18px; border-radius: 3px 3px 0 0;
+  background: linear-gradient(180deg, #c9a86a, #b08d4f);
+  min-height: 2px; transition: height .4s ease;
+}
+.rs-col.hot .rs-bar { background: linear-gradient(180deg, #d76a55, #b8422f); }
+.rs-num { font-size: 11.5px; line-height: 1.2; font-weight: 700; color: #6b5a3e; }
+.rs-col.hot .rs-num { color: #b8422f; }
 #log-filter { display: flex; gap: 4px; padding: 0 10px; flex-wrap: wrap; }
 #log-filter button {
   font-size: 13.5px; padding: 2px 9px; border: 1px solid var(--panel-line);

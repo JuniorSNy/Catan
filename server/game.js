@@ -41,6 +41,7 @@ export class Game {
       connected: true,
     }));
     this.bank = Object.fromEntries(RESOURCES.map((r) => [r, BANK_PER_RESOURCE]));
+    this.rollStats = {}; // total -> 次数：本局各点数出现频率（log 框顶部的统计图）
     this.devDeck = shuffle(DEV_DECK, rng);
     this.phase = 'setup';
     const n = this.players.length;
@@ -266,6 +267,7 @@ export class Game {
       eventFace = (forced && forced.eventDie) ? forced.eventDie : (f < 3 ? 'ship' : IMPROVE_TRACKS[f - 3]);
       this.turn.eventDie = eventFace;
     }
+    this.rollStats[total] = (this.rollStats[total] || 0) + 1;
     this.addEvent('dice', { player: p, dice: [d1, d2], eventDie: eventFace });
     this.addLog(`${this.players[p].name} 掷出了 ${total}（${d1}+${d2}）`, { cat: 'dice' });
 
@@ -831,6 +833,7 @@ export class Game {
       buildings: this.buildings,
       roads: this.roads,
       bank: { ...this.bank, devDeck: this.devDeck.length },
+      rollStats: this.rollStats,
       turn: {
         player: this.turn.player,
         count: this.turn.count,
