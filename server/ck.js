@@ -316,7 +316,9 @@ export const ckMethods = {
       return;
     }
     const knight = {
-      player: from, level, active: false,
+      // 官方 FAQ：逃兵获得的骑士继承被移除骑士的激活状态（降级放置同样继承），
+      // activatedTurn 置 0：若继承到激活态，当回合即可行动
+      player: from, level, active: k.active,
       builtTurn: this.turn.count, promotedTurn: 0, activatedTurn: 0, actedTurn: 0,
     };
     this.turn.displace = { owner: from, knight, options: spots, reason: 'deserter' };
@@ -821,7 +823,10 @@ export const ckMethods = {
           const got = this.moveRandomCard(t, p);
           if (got) {
             this.addEvent('steal', { from: t, to: p });
-            this.addLog(`${pl.name} 从 ${this.players[t].name} 那里偷了一张牌`);
+            const rn = this.cardName(got);
+            this.addLog(`${pl.name} 从 ${this.players[t].name} 那里偷了一张牌`, { cat: 'steal' });
+            this.addLog(`🔍 你从 ${this.players[t].name} 偷到了 ${rn}`, { to: [p], cat: 'steal' });
+            this.addLog(`🔍 ${pl.name} 从你这里偷走了 ${rn}`, { to: [t], cat: 'steal' });
           }
         }
         break;
