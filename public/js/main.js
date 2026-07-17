@@ -599,6 +599,10 @@ socket.on('state', (state) => {
     holdUntil = Date.now() + DICE_ROLL_MS + 900;
   }
 
+  // 新产出立即从显示数字里扣住（S 已替换：冻结期间上一批飞牌落地/兜底 flush 会重绘，
+  // 若等到 applyState 才登记，这些重绘会提前泄露新数字，表现为卡片抖一下又跌回去）
+  registerPendingGains();
+
   // 处于冻结窗口内则延后应用（含冻结期间到达的后续状态），否则立即应用
   const wait = holdUntil - Date.now();
   clearTimeout(holdTimer);
@@ -607,7 +611,6 @@ socket.on('state', (state) => {
 });
 
 function applyState() {
-  registerPendingGains(); // 本批新产出先从显示数字里扣住，飞牌抵达时才逐张 +1
   renderAll();
   playEvents(); // 剩余事件（产出/偷牌飘字、回合横幅等；骰子已单独播放）
 }
@@ -618,9 +621,13 @@ let pendingSelf = {};   // res -> n：自己各资源卡与手牌总数的待结
 let pendingCount = {};  // playerIdx -> n：状态栏手牌数的待结算量（含自己）
 let pendingFlushTimer = null;
 
+let lastPendingSeq = 0; // 登记游标独立于 lastSeq：状态到达即登记，playEvents 稍后才推进 lastSeq
 function registerPendingGains() {
+  const seen = Math.max(lastSeq, lastPendingSeq);
   for (const ev of S.events) {
-    if (ev.seq <= lastSeq || ev.type !== 'gain') continue;
+    if (ev.seq <= seen) continue;
+    lastPendingSeq = Math.max(lastPendingSeq, ev.seq);
+    if (ev.type !== 'gain') continue;
     pendingCount[ev.player] = (pendingCount[ev.player] || 0) + ev.n;
     if (ev.player === myIndex) pendingSelf[ev.res] = (pendingSelf[ev.res] || 0) + ev.n;
   }
@@ -639,6 +646,11 @@ function revealGain(player, res) {
 function flushPending() {
   clearTimeout(pendingFlushTimer);
   pendingFlushTimer = null;
+  // 冻结窗口内不结清：此时 pending 里含刚登记、还没起飞的新产出，顺延到结算之后
+  if (Date.now() < holdUntil) {
+    pendingFlushTimer = setTimeout(flushPending, holdUntil - Date.now() + 2000);
+    return;
+  }
   if (!Object.keys(pendingSelf).length && !Object.keys(pendingCount).length) return;
   pendingSelf = {};
   pendingCount = {};
@@ -656,6 +668,7 @@ socket.on('returnToLobby', () => {
   }
   boardReady = false;   // 下一局需重新 initBoard
   lastSeq = 0;
+  lastPendingSeq = 0;
   lastLogSeq = 0;
   $('log-list').innerHTML = '';
   S = null;
