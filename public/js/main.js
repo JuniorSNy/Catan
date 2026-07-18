@@ -7,8 +7,9 @@ import {
   attachCardInspect,
 } from './render.js';
 import { initSfx, sfx } from './sfx.js';
-import { initSound } from './sound.js';
+import { initSound, duckBgm } from './sound.js';
 import { spotlight, clearSpotlight } from './spotlight.js';
+import { startConfetti, stopConfetti } from './confetti.js';
 
 initSfx();
 initSound();
@@ -784,6 +785,10 @@ socket.on('returnToLobby', () => {
   flightsActive = 0;
   inFlightSelf = {};
   pendingWatchPolls = 0;
+  victoryCelebrated = false;
+  reviewMode = false;
+  stopConfetti();
+  $('btn-victory-back').classList.add('hidden');
   for (const m of ['modal-winner', 'modal-discard', 'modal-steal', 'modal-trade',
     'modal-yop', 'modal-monopoly', 'modal-endgame', 'modal-aqueduct',
     'modal-alchemist', 'modal-pick', 'modal-knightmenu', 'modal-improve', 'modal-settings']) {
@@ -2044,16 +2049,48 @@ function renderModals() {
     }
   }
 
-  // 胜利
+  // 胜利结算舞台
   if (S.phase === 'ended') {
     $('winner-title').textContent = `🎉 ${S.players[S.winner].name} 获胜！`;
-    const scores = S.players.map((p, i) => `<p><b style="color:${p.color}">${esc(p.name)}</b>：${p.vp} 分</p>`).join('');
-    $('winner-scores').innerHTML = scores;
+    // 排名榜：按分数降序，冠军行金色高亮，逐行滑入
+    const medals = ['🥇', '🥈', '🥉'];
+    const order = S.players.map((p, i) => ({ p, i })).sort((a, b) => b.p.vp - a.p.vp || (a.i === S.winner ? -1 : 1));
+    $('winner-scores').innerHTML = order.map(({ p, i }, rank) =>
+      `<div class="vic-row${i === S.winner ? ' first' : ''}" style="animation-delay:${0.55 + rank * 0.18}s">`
+      + `<span class="vic-medal">${medals[rank] || '·'}</span>`
+      + `<span class="vic-name" style="color:${p.color}">${esc(p.name)}</span>`
+      + `<span class="vic-vp">${p.vp} 分</span></div>`).join('')
+      + `<p class="vic-sub">本局共 ${S.turn.count} 回合 · 点「复盘本局」可回看地图与战报</p>`;
     $('btn-again').classList.toggle('hidden', !amHost());
     $('winner-hint').classList.toggle('hidden', amHost());
-    $('modal-winner').classList.remove('hidden');
+    if (!reviewMode) $('modal-winner').classList.remove('hidden');
+    $('btn-victory-back').classList.toggle('hidden', !reviewMode);
+    if (!victoryCelebrated) {
+      // 音乐 + 礼花只在结算首次出现时放一次；BGM 同步压低让位
+      victoryCelebrated = true;
+      sfx.victory();
+      duckBgm(8200);
+      startConfetti($('victory-confetti'), { grand: true });
+    }
   }
 }
+
+// 复盘模式：收起结算舞台看地图和战报，可随时返回
+let victoryCelebrated = false;
+let reviewMode = false;
+$('btn-review').onclick = () => {
+  reviewMode = true;
+  $('modal-winner').classList.add('hidden');
+  $('btn-victory-back').classList.remove('hidden');
+  stopConfetti();
+  setLogCollapsed(false); // 复盘直接展开战报，往上滚可加载全部历史
+};
+$('btn-victory-back').onclick = () => {
+  reviewMode = false;
+  $('btn-victory-back').classList.add('hidden');
+  $('modal-winner').classList.remove('hidden');
+  startConfetti($('victory-confetti'), { grand: false });
+};
 
 $('discard-confirm').onclick = () => {
   send({ type: 'discard', resources: discardSel });

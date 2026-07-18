@@ -258,6 +258,49 @@ export const sfx = {
     tone({ freq: 1046, type: 'triangle', dur: 0.32, gain: 0.18, when: 0.37 });
     tone({ freq: 2093, type: 'sine', dur: 0.34, gain: 0.07, when: 0.37 });
   },
+  // 胜利音乐：约 7 秒的凯旋小曲——军鼓滚奏起手，铜管主题两个乐句，末尾长和弦 + 钟声琶音收束
+  victory() {
+    const b = 60 / 132; // 132 BPM，一拍 ≈ 0.455s
+    const horn = (f, when, dur, gain = 0.15) => {
+      tone({ freq: f, type: 'triangle', dur, gain, when });
+      tone({ freq: f, type: 'sawtooth', dur, gain: gain * 0.32, when }); // 锯齿泛音贴近铜管质感
+    };
+    const bass = (f, when, dur) => tone({ freq: f, type: 'sawtooth', dur, gain: 0.1, when });
+    const bell = (f, when, dur = 0.5, gain = 0.06) => tone({ freq: f, type: 'sine', dur, gain, when });
+    const snare = (when, gain = 0.1) => noise({ freq: 2100, q: 0.9, dur: 0.09, gain, when });
+
+    // 开场军鼓滚奏渐强
+    for (let i = 0; i < 9; i++) snare(i * 0.05, 0.035 + i * 0.011);
+    snare(0.5, 0.16);
+
+    const t0 = 0.55; // 主题起点
+    const at = (beat) => t0 + beat * b;
+    // 乐句一：C 大调上行琶音冲顶（C5 E5 G5 → C6 长音）
+    horn(523, at(0), b * 0.5);
+    horn(659, at(0.5), b * 0.5);
+    horn(784, at(1), b * 0.5);
+    horn(1046, at(1.5), b * 1.4, 0.18);
+    bass(131, at(0), b * 1.4); bass(98, at(1.5), b * 1.4);
+    bell(2093, at(1.5), 0.5);
+    snare(at(0)); snare(at(1.5), 0.13);
+    // 乐句二：回落盘旋（B5 A5 G5 A5 → B5），属和声托底
+    horn(988, at(3), b * 0.5);
+    horn(880, at(3.5), b * 0.5);
+    horn(784, at(4), b * 0.5);
+    horn(880, at(4.5), b * 0.5);
+    horn(988, at(5), b * 1.2, 0.16);
+    bass(98, at(3), b * 1.4); bass(147, at(4.5), b * 1.4);
+    snare(at(3)); snare(at(4.5), 0.08);
+    // 终止式：C6 长音 + 完整 C 大调和弦 + 镲声 + 钟声琶音飘上去
+    horn(1046, at(6.5), b * 3, 0.2);
+    horn(659, at(6.5), b * 3, 0.1);
+    horn(523, at(6.5), b * 3, 0.1);
+    bass(131, at(6.5), b * 3); bass(65, at(6.5), b * 3);
+    noise({ freq: 6400, q: 0.7, dur: 1.1, gain: 0.07, when: at(6.5) }); // 镲
+    snare(at(6.5), 0.16);
+    [1046, 1318, 1568, 2093].forEach((f, i) => bell(f, at(7.2) + i * 0.14, 0.8, 0.055));
+    bell(3136, at(7.9), 1.1, 0.04);
+  },
   // 海盗来袭结算：守住 → 上行凯旋三连音；失守 → 下行崩塌
   barbarian(win) {
     if (win) {

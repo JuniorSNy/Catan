@@ -1406,3 +1406,78 @@ body {
   #improve-cols { flex-direction: column; align-items: stretch; }
   .imp-col { max-width: none; }
 }
+
+/* ---------- 胜利结算舞台 ---------- */
+#modal-winner {
+  /* 比普通弹窗更沉浸的暗场：中央留亮，四周压暗 */
+  background: radial-gradient(ellipse at 50% 42%, rgba(20,14,4,.55), rgba(8,5,2,.86) 78%);
+  overflow: hidden;
+}
+/* 旋转金光射线：藏在结算面板后面，向四周放射 */
+#modal-winner .victory-rays {
+  position: absolute; left: 50%; top: 44%; width: 240vmax; height: 240vmax;
+  transform: translate(-50%, -50%);
+  background: repeating-conic-gradient(
+    rgba(255, 214, 92, .13) 0 7deg, rgba(255, 214, 92, 0) 7deg 16deg);
+  -webkit-mask-image: radial-gradient(circle, #000 0%, transparent 34%);
+  mask-image: radial-gradient(circle, #000 0%, transparent 34%);
+  animation: vic-rays 26s linear infinite;
+  pointer-events: none;
+}
+@keyframes vic-rays { to { transform: translate(-50%, -50%) rotate(360deg); } }
+#victory-confetti {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; /* 彩纸飘在面板前面，但不挡点击 */
+}
+.victory-box {
+  position: relative;
+  border: 2px solid rgba(214, 168, 74, .75);
+  box-shadow:
+    0 0 0 4px rgba(120, 86, 30, .25),
+    0 0 60px rgba(255, 200, 80, .28),
+    0 22px 60px rgba(0, 0, 0, .5),
+    inset 0 1px 0 rgba(255, 255, 255, .8);
+  animation: vic-drop .7s cubic-bezier(.3, 1.35, .55, 1) both;
+}
+@keyframes vic-drop {
+  0% { opacity: 0; transform: translateY(-46px) scale(.82); }
+  100% { opacity: 1; transform: none; }
+}
+.victory-box .victory-banner { width: min(500px, 82vw); }
+/* 排名榜 */
+#winner-scores { margin: 6px 0 2px; }
+.vic-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 14px; margin: 6px auto; max-width: 340px;
+  border-radius: 10px; background: rgba(120, 90, 40, .1);
+  animation: vic-row-in .5s cubic-bezier(.25, 1.2, .5, 1) both;
+}
+.vic-row.first {
+  background: linear-gradient(120deg, rgba(255, 214, 100, .5), rgba(255, 236, 170, .32));
+  box-shadow: 0 0 14px rgba(255, 200, 80, .45), inset 0 0 0 1px rgba(190, 140, 40, .5);
+}
+@keyframes vic-row-in {
+  0% { opacity: 0; transform: translateX(-26px); }
+  100% { opacity: 1; transform: none; }
+}
+.vic-medal { font-size: 21px; width: 26px; }
+.vic-name { font-weight: 700; font-size: 16px; text-shadow: 0 1px 0 rgba(255,248,230,.7); }
+.vic-vp { margin-left: auto; font-weight: 800; font-size: 16px; color: #5a3d1a; }
+.vic-sub { color: #7a6540; font-size: 13px; margin-top: 8px; }
+.victory-actions { display: flex; gap: 10px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+/* 复盘模式：回到结算的悬浮按钮（金色，顶部居中） */
+#btn-victory-back {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+  z-index: 6; padding: 9px 20px; border: 1px solid rgba(190, 140, 40, .8);
+  border-radius: 999px; cursor: pointer;
+  font-family: inherit; font-size: 15px; font-weight: 700; color: #4a3410;
+  background: linear-gradient(180deg, #ffe9a8, #f2c04e);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .35), 0 0 18px rgba(255, 200, 80, .35),
+    inset 0 1px 0 rgba(255, 255, 255, .7);
+  animation: vic-back-pulse 2.4s ease-in-out infinite;
+}
+#btn-victory-back:hover { filter: brightness(1.06); }
+@keyframes vic-back-pulse {
+  0%, 100% { box-shadow: 0 4px 16px rgba(0,0,0,.35), 0 0 12px rgba(255,200,80,.25), inset 0 1px 0 rgba(255,255,255,.7); }
+  50% { box-shadow: 0 4px 16px rgba(0,0,0,.35), 0 0 26px rgba(255,200,80,.55), inset 0 1px 0 rgba(255,255,255,.7); }
+}

@@ -37,6 +37,17 @@ function ensureAudio() {
   return audio;
 }
 
+// 临时压低 BGM（胜利音乐等前景音演出用），ms 后淡回原音量
+let duckTimer = 0;
+export function duckBgm(ms = 8000) {
+  if (!audio || audio.paused) return;
+  clearTimeout(duckTimer);
+  audio.volume = bgmVol * BGM_MAX * 0.18;
+  duckTimer = setTimeout(() => {
+    if (audio) audio.volume = bgmVol * BGM_MAX;
+  }, ms);
+}
+
 function syncUI() {
   $('bgm-toggle').classList.toggle('off', !bgmOn);
   $('bgm-range').value = Math.round(bgmVol * 100);
