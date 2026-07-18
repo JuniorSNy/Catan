@@ -693,6 +693,10 @@ export class Game {
         if (this.trade.get[r] > this.players[p].hand[r]) this.err('你的资源不足以接受该交易');
       }
     }
+    // 撤回同意要在日志里提醒发起者，防止发起者按旧印象点成交
+    if (this.trade.responses[p] === 'accept' && !accept) {
+      this.addLog(`${this.players[p].name} 撤回了对交易的同意`);
+    }
     this.trade.responses[p] = accept ? 'accept' : 'decline';
   }
 

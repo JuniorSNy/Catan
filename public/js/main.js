@@ -2178,14 +2178,18 @@ function renderTradeBanner() {
     cancel.textContent = '取消交易';
     cancel.onclick = () => send({ type: 'cancelTrade' });
     actions.appendChild(cancel);
-  } else if (iAmPlayer && !t.responses[myIndex]) {
+  } else if (iAmPlayer) {
+    // 成交前随时可以改主意：同意后按钮变成「撤回同意」，拒绝后也能改回同意
+    const resp = t.responses[myIndex];
     const yes = document.createElement('button');
     yes.className = 'btn primary';
-    yes.textContent = '✅ 同意';
+    yes.textContent = resp === 'accept' ? '✅ 已同意' : '✅ 同意';
+    yes.disabled = resp === 'accept';
     yes.onclick = () => send({ type: 'respondTrade', accept: true });
     const no = document.createElement('button');
     no.className = 'btn';
-    no.textContent = '❌ 拒绝';
+    no.textContent = resp === 'accept' ? '↩️ 撤回同意' : resp === 'decline' ? '❌ 已拒绝' : '❌ 拒绝';
+    no.disabled = resp === 'decline';
     no.onclick = () => send({ type: 'respondTrade', accept: false });
     actions.append(yes, no);
   }
